@@ -9,6 +9,7 @@
     "project_id": {"type": "string"},
     "affected_projects": {"type": "array"},
     "relationships": {"type": "array"},
+    "source_of_truth": {"type": "array"},
     "read_only": {"const": true}
   }
 }

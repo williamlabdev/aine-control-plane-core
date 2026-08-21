@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Iterable, Mapping
 
 from .contracts import AdapterContext
@@ -47,6 +48,22 @@ def validate_snapshot(snapshot: Mapping[str, Any]) -> list[str]:
             errors.append(f"snapshot.{field} must be an array")
     if "source_of_truth" in snapshot and not isinstance(snapshot.get("source_of_truth"), list):
         errors.append("snapshot.source_of_truth must be an array")
+    if "relationships" in snapshot and not isinstance(snapshot.get("relationships"), list):
+        errors.append("snapshot.relationships must be an array")
+    relationship_records = snapshot.get("relationships", [])
+    if not isinstance(relationship_records, list):
+        relationship_records = []
+    for index, edge in enumerate(relationship_records):
+        if not isinstance(edge, Mapping):
+            errors.append(f"snapshot.relationships[{index}] must be an object")
+            continue
+        if not (edge.get("dependency_id") or edge.get("relationship_id")):
+            errors.append(f"snapshot.relationships[{index}] is missing edge identity")
+        if not isinstance(edge.get("source"), Mapping) or not isinstance(edge.get("target"), Mapping):
+            errors.append(f"snapshot.relationships[{index}] is missing edge endpoints")
+        evidence = edge.get("evidence", [])
+        if not isinstance(evidence, list) or any(not isinstance(item, str) for item in evidence):
+            errors.append(f"snapshot.relationships[{index}].evidence must be an array of strings")
     for path in find_local_paths(snapshot, "snapshot"):
         errors.append(f"runtime-local path is not allowed: {path}")
     return errors
@@ -111,6 +128,84 @@ class PortfolioRegistry:
                     dependencies[str(edge_id)] = dict(edge)
         return [dependencies[key] for key in sorted(dependencies)]
 
+    def relationships(
+        self,
+        project_id: str | None = None,
+        relationship_type: str | None = None,
+        status: str | None = None,
+    ) -> list[Mapping[str, Any]]:
+        """Return explicit relationship edges without rescanning repositories."""
+        relationships: dict[str, Mapping[str, Any]] = {}
+        for snapshot in self.snapshots():
+            edges = list(snapshot.get("relationships", []))
+            edges.extend(
+                edge
+                for edge in snapshot.get("dependencies", [])
+                if isinstance(edge, Mapping)
+                and (edge.get("relationship_type") or edge.get("relationship_source") == "manifest")
+            )
+            for edge in edges:
+                if not isinstance(edge, Mapping):
+                    continue
+                source = edge.get("source", {})
+                target = edge.get("target", {})
+                source_id = source.get("project_id") if isinstance(source, Mapping) else None
+                target_id = target.get("project_id") if isinstance(target, Mapping) else None
+                if project_id is not None and project_id not in {source_id, target_id}:
+                    continue
+                if relationship_type is not None and edge.get("relationship_type") != relationship_type:
+                    continue
+                if status is not None and edge.get("status") != status:
+                    continue
+                semantic_identity = json.dumps(
+                    {
+                        "source": source_id,
+                        "target": target_id,
+                        "relationship_type": edge.get("relationship_type", edge.get("kind")),
+                        "status": edge.get("status"),
+                        "strength": edge.get("strength"),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                edge_id = edge.get("dependency_id") or edge.get("relationship_id")
+                identity = f"id:{edge_id}" if edge_id else f"legacy:{semantic_identity}"
+                current = relationships.get(identity)
+                if current is None:
+                    relationships[identity] = dict(edge)
+                else:
+                    merged = dict(current)
+                    current_evidence = {item for item in current.get("evidence", []) if isinstance(item, str)}
+                    incoming_evidence = {item for item in edge.get("evidence", []) if isinstance(item, str)}
+                    evidence = current_evidence | incoming_evidence
+                    if evidence:
+                        merged["evidence"] = sorted(evidence)
+                    relationships[identity] = merged
+        return [relationships[key] for key in sorted(relationships)]
+
+    def source_of_truth(
+        self,
+        domain: str | None = None,
+        project_id: str | None = None,
+    ) -> list[Mapping[str, Any]]:
+        """Return declared source-of-truth rules with optional portable filters."""
+        rules: dict[str, Mapping[str, Any]] = {}
+        for snapshot in self.snapshots():
+            for rule in snapshot.get("source_of_truth", []):
+                if not isinstance(rule, Mapping):
+                    continue
+                if domain is not None and rule.get("domain") != domain:
+                    continue
+                authority = rule.get("authority", {})
+                authority_project = authority.get("project_id") if isinstance(authority, Mapping) else None
+                if project_id is not None and authority_project != project_id:
+                    continue
+                payload = json.dumps(dict(rule), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                identity = str(rule.get("source_rule_id") or f"content:{payload}")
+                rules[identity] = dict(rule)
+        return [rules[identity] for identity in sorted(rules)]
+
     def get_project(self, project_id: str) -> Mapping[str, Any] | None:
         for project in self.projects():
             if project.get("project_id") == project_id:
@@ -136,6 +231,7 @@ class PortfolioRegistry:
             "project_id": project_id,
             "affected_projects": [affected[key] for key in sorted(affected)],
             "relationships": matching_edges,
+            "source_of_truth": self.source_of_truth(project_id=project_id),
             "read_only": True,
         }
 

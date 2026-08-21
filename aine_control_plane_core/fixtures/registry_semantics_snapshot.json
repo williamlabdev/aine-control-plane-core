@@ -1,0 +1,77 @@
+{
+  "schema": "aine.registry.v1",
+  "snapshot_id": "snapshot.polyrepo.semantic.1",
+  "portfolio": {
+    "portfolio_id": "polyrepo.example",
+    "workspace_roots": [
+      {"root_id": "core", "path": "core"},
+      {"root_id": "side-projects", "path": "side-projects"}
+    ]
+  },
+  "projects": [
+    {"project_id": "core.checkout-service", "name": "checkout-service", "root_id": "core"},
+    {"project_id": "core.web-app", "name": "web-app", "root_id": "core"},
+    {"project_id": "side-projects.content-tool", "name": "content-tool", "root_id": "side-projects"}
+  ],
+  "repositories": [],
+  "checkouts": [],
+  "artifacts": [
+    {
+      "artifact_id": "checkout-openapi",
+      "project_id": "core.checkout-service",
+      "root_id": "core",
+      "path": "openapi.yaml",
+      "role": "source",
+      "status": "active"
+    },
+    {
+      "artifact_id": "generated-content",
+      "project_id": "side-projects.content-tool",
+      "root_id": "side-projects",
+      "path": "generated/content.json",
+      "role": "generated",
+      "status": "active"
+    }
+  ],
+  "dependencies": [
+    {
+      "dependency_id": "dep.polyrepo.cross-root",
+      "source": {"project_id": "side-projects.content-tool", "root_id": "side-projects"},
+      "target": {"project_id": "core.checkout-service", "root_id": "core"},
+      "kind": "runtime_api",
+      "scope": "cross_root",
+      "status": "planned",
+      "evidence": ["content-tool/.aine/registry.json"]
+    },
+    {
+      "dependency_id": "dep.polyrepo.web-app",
+      "source": {"project_id": "core.web-app", "root_id": "core"},
+      "target": {"project_id": "core.checkout-service", "root_id": "core"},
+      "kind": "runtime_api",
+      "scope": "intra_root",
+      "status": "active",
+      "evidence": ["web-app/.aine/registry.json"]
+    }
+  ],
+  "relationships": [
+    {
+      "dependency_id": "rel.polyrepo.service-client",
+      "source": {"project_id": "core.web-app", "root_id": "core"},
+      "target": {"project_id": "core.checkout-service", "root_id": "core"},
+      "kind": "service_client",
+      "relationship_type": "service_client",
+      "scope": "intra_root",
+      "status": "active",
+      "evidence": ["web-app/.aine/registry.json"]
+    }
+  ],
+  "source_of_truth": [
+    {
+      "source_rule_id": "sot.polyrepo.checkout-api",
+      "domain": "checkout.api",
+      "authority": {"project_id": "core.checkout-service", "artifact": "checkout-openapi"},
+      "status": "declared",
+      "evidence": ["checkout-service/.aine/registry.json"]
+    }
+  ]
+}

@@ -103,6 +103,57 @@ class PublicCoreTests(unittest.TestCase):
             )
             self.assertEqual(retention["decisions"][0]["status"], "review")
 
+    def test_portfolio_queries_relationships_source_of_truth_and_impact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = json.loads((FIXTURE_DIR / "registry_semantics_snapshot.json").read_text(encoding="utf-8"))
+            clock_values = iter(
+                (
+                    "2026-08-22T00:00:01+00:00",
+                    "2026-08-22T00:00:02+00:00",
+                    "2026-08-22T00:00:03+00:00",
+                    "2026-08-22T00:00:04+00:00",
+                )
+            )
+            store = LocalRecordStore(Path(directory) / "portfolio.sqlite", clock=lambda: next(clock_values))
+            registry = PortfolioRegistry(store)
+
+            self.assertEqual(registry.ingest_snapshot(snapshot, self.context)["status"], "success")
+            relationships = registry.relationships(
+                project_id="core.web-app",
+                relationship_type="service_client",
+                status="active",
+            )
+            self.assertEqual([item["dependency_id"] for item in relationships], ["rel.polyrepo.service-client"])
+            self.assertEqual(registry.relationships(relationship_type="unknown"), [])
+
+            source_rules = registry.source_of_truth(domain="checkout.api")
+            self.assertEqual(len(source_rules), 1)
+            self.assertEqual(source_rules[0]["authority"]["artifact"], "checkout-openapi")
+            self.assertEqual(registry.source_of_truth(project_id="core.web-app"), [])
+
+            newer = {
+                **snapshot,
+                "snapshot_id": "snapshot.polyrepo.semantic.2",
+                "source_of_truth": [{**source_rules[0], "evidence": ["checkout-service/.aine/registry.v2.json"]}],
+            }
+            self.assertEqual(registry.ingest_snapshot(newer, self.context)["status"], "success")
+            self.assertEqual(registry.source_of_truth(domain="checkout.api")[0]["evidence"], ["checkout-service/.aine/registry.v2.json"])
+
+            impact = registry.impact("core.checkout-service")
+            self.assertTrue(any(edge["scope"] == "cross_root" for edge in impact["relationships"]))
+            self.assertEqual(impact["source_of_truth"], registry.source_of_truth(project_id="core.checkout-service"))
+
+            invalid = {**snapshot, "snapshot_id": "snapshot.polyrepo.invalid", "relationships": [{"source": {}, "target": {}}]}
+            self.assertEqual(registry.ingest_snapshot(invalid, self.context)["status"], "failure")
+            invalid_type = {**snapshot, "snapshot_id": "snapshot.polyrepo.invalid-type", "relationships": None}
+            self.assertEqual(registry.ingest_snapshot(invalid_type, self.context)["status"], "failure")
+            invalid_evidence = {
+                **snapshot,
+                "snapshot_id": "snapshot.polyrepo.invalid-evidence",
+                "relationships": [{**snapshot["relationships"][0], "evidence": [{}]}],
+            }
+            self.assertEqual(registry.ingest_snapshot(invalid_evidence, self.context)["status"], "failure")
+
     def test_record_validation_rejects_absolute_path(self):
         record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.path", "claims": {"path": "/Users/example/private.txt"}}
         self.assertTrue(validate_record(record))

@@ -12,7 +12,7 @@ or a provider integration product.
 - read-only adapter contracts and machine-readable outcomes;
 - portable adapter configuration and local-path/credential-field validation;
 - append-only SQLite evidence and audit storage;
-- portable Registry snapshot ingest, project/artifact/dependency views, and impact analysis;
+- portable Registry snapshot ingest, project/artifact/dependency/relationship/source-of-truth views, and impact analysis;
 - advisory or opt-in enforced policy evaluation, including unknown and conflict states;
 - deterministic RBAC/ABAC authorization evaluation;
 - retention evaluation without deletion;
@@ -77,6 +77,10 @@ PYTHONPATH=. python examples/policy_evaluation.py
 
 Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the public boundary and
 [SECURITY.md](SECURITY.md) before embedding the package in a service.
+
+`PortfolioRegistry.relationships()` and `PortfolioRegistry.source_of_truth()`
+query only records persisted from a portable Registry snapshot. They do not
+rescan repositories or infer runtime semantics.
 
 ## License
 
