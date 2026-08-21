@@ -1,0 +1,5 @@
+{
+  "schema": "aine.evidence.v1",
+  "evidence_id": "evidence.reference.1",
+  "claims": {"status": "pass", "source": "reference-fixture"}
+}

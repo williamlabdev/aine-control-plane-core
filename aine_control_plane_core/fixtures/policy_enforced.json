@@ -1,0 +1,11 @@
+{
+  "policy": {
+    "policy_id": "policy.reference.release",
+    "mode": "enforced",
+    "required_checks": ["tests", "security"]
+  },
+  "checks": [
+    {"check_id": "tests", "status": "pass", "evidence_ids": ["evidence.tests"]},
+    {"check_id": "security", "status": "fail", "evidence_ids": ["evidence.security"]}
+  ]
+}

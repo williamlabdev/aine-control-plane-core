@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/audit-event.v1.schema.json",
+  "title": "AINE Control Plane Audit Event v1",
+  "type": "object",
+  "required": ["schema", "event_id", "event_type", "aggregate_id", "payload"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.audit-event.v1"},
+    "event_id": {"type": "string"},
+    "event_type": {"type": "string"},
+    "aggregate_id": {"type": "string"},
+    "payload": {"type": "object"}
+  }
+}

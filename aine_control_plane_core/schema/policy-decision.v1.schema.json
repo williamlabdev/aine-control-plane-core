@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/policy-decision.v1.schema.json",
+  "title": "AINE Control Plane Policy Decision v1",
+  "type": "object",
+  "required": ["schema", "policy_id", "mode", "status", "blocked", "request_id", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.policy-decision.v1"},
+    "policy_id": {"type": "string"},
+    "mode": {"enum": ["advisory", "enforced"]},
+    "status": {"enum": ["pass", "fail", "unknown", "conflict"]},
+    "blocked": {"type": "boolean"},
+    "request_id": {"type": "string"},
+    "required_checks": {"type": "array", "items": {"type": "string"}},
+    "missing_checks": {"type": "array", "items": {"type": "string"}},
+    "failures": {"type": "array", "items": {"type": "string"}},
+    "unknowns": {"type": "array", "items": {"type": "string"}},
+    "conflicts": {"type": "array", "items": {"type": "string"}},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "approval_required": {"type": "boolean"},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "read_only": {"const": true}
+  }
+}

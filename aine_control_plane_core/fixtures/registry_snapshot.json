@@ -1,0 +1,28 @@
+{
+  "schema": "aine.registry.v1",
+  "snapshot_id": "snapshot.reference.1",
+  "portfolio": {"name": "reference-portfolio"},
+  "projects": [
+    {"project_id": "reference.provider", "name": "provider", "root_id": "workspace"},
+    {"project_id": "reference.consumer", "name": "consumer", "root_id": "workspace"}
+  ],
+  "repositories": [],
+  "checkouts": [],
+  "artifacts": [
+    {"artifact_id": "provider-api", "project_id": "reference.provider", "path": "api.yaml", "role": "contract", "status": "active"}
+  ],
+  "dependencies": [
+    {
+      "dependency_id": "dependency.reference.1",
+      "source": {"project_id": "reference.consumer", "root_id": "workspace"},
+      "target": {"project_id": "reference.provider", "root_id": "workspace"},
+      "kind": "runtime_api",
+      "scope": "same_root",
+      "status": "active",
+      "evidence": {"path": "consumer/client.py", "reference": "provider/api.yaml"}
+    }
+  ],
+  "source_of_truth": [
+    {"domain": "reference.api", "authority": {"project_id": "reference.provider", "artifact": "provider-api"}}
+  ]
+}

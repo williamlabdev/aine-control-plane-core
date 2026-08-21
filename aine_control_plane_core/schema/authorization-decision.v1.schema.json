@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/authorization-decision.v1.schema.json",
+  "title": "AINE Control Plane Authorization Decision v1",
+  "type": "object",
+  "required": ["schema", "subject_id", "action", "resource", "status", "request_id", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.authorization-decision.v1"},
+    "subject_id": {"type": "string"},
+    "action": {"type": "string"},
+    "resource": {"type": "string"},
+    "status": {"enum": ["allow", "deny", "unknown"]},
+    "request_id": {"type": "string"},
+    "matched_rule_ids": {"type": "array", "items": {"type": "string"}},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "read_only": {"const": true}
+  }
+}

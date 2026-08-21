@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/identity-context.v1.schema.json",
+  "title": "AINE Control Plane Identity Context v1",
+  "type": "object",
+  "required": ["schema", "subject_id", "roles", "teams", "attributes", "evidence_ids"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.identity-context.v1"},
+    "subject_id": {"type": "string"},
+    "roles": {"type": "array", "items": {"type": "string"}},
+    "teams": {"type": "array", "items": {"type": "string"}},
+    "attributes": {"type": "object"},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}}
+  }
+}

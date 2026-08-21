@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/retention-decision.v1.schema.json",
+  "title": "AINE Control Plane Retention Decision v1",
+  "type": "object",
+  "required": ["schema", "record_id", "status", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.retention-decision.v1"},
+    "record_id": {"type": "string"},
+    "status": {"enum": ["keep", "review", "unknown"]},
+    "reason": {"type": "string"},
+    "read_only": {"const": true}
+  }
+}

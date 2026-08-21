@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/adapter-outcome.v1.schema.json",
+  "title": "AINE Control Plane Adapter Outcome v1",
+  "type": "object",
+  "required": ["schema", "status", "adapter_id", "operation", "request_id", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.adapter-outcome.v1"},
+    "status": {"enum": ["success", "failure", "unknown", "conflict"]},
+    "adapter_id": {"type": "string"},
+    "operation": {"type": "string"},
+    "request_id": {"type": "string"},
+    "read_only": {"const": true},
+    "result": {"type": "object"},
+    "error_code": {"type": "string"},
+    "reasons": {"type": "array", "items": {"type": "string"}},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "conflict_ids": {"type": "array", "items": {"type": "string"}}
+  }
+}

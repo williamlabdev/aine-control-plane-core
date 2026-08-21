@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/adapter-manifest.v1.schema.json",
+  "title": "AINE Control Plane Adapter Manifest v1",
+  "type": "object",
+  "required": ["schema", "adapter_id", "kind", "contract_version", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.adapter.v1"},
+    "adapter_id": {"type": "string"},
+    "kind": {"enum": ["evidence_source", "evidence_sink", "identity", "portfolio_view", "retention"]},
+    "contract_version": {"const": "aine.control-plane.contracts.v1"},
+    "capabilities": {"type": "array", "items": {"type": "string"}},
+    "read_only": {"const": true}
+  }
+}

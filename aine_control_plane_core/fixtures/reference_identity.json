@@ -1,0 +1,15 @@
+{
+  "agent.codex": {
+    "roles": ["developer"],
+    "teams": ["platform"],
+    "attributes": {"environment": "development"},
+    "evidence_ids": ["identity-evidence.codex"]
+  },
+  "user.conflicted": {
+    "roles": ["developer"],
+    "teams": ["platform", "checkout"],
+    "attributes": {"environment": "unknown"},
+    "evidence_ids": ["identity-evidence.a", "identity-evidence.b"],
+    "conflict_ids": ["identity-conflict.1"]
+  }
+}

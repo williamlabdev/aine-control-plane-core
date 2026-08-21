@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/impact-report.v1.schema.json",
+  "title": "AINE Control Plane Impact Report v1",
+  "type": "object",
+  "required": ["schema", "project_id", "affected_projects", "relationships", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.impact-report.v1"},
+    "project_id": {"type": "string"},
+    "affected_projects": {"type": "array"},
+    "relationships": {"type": "array"},
+    "read_only": {"const": true}
+  }
+}
