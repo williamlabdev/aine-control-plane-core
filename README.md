@@ -80,7 +80,11 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the public boundary and
 
 `PortfolioRegistry.relationships()` and `PortfolioRegistry.source_of_truth()`
 query only records persisted from a portable Registry snapshot. They do not
-rescan repositories or infer runtime semantics.
+rescan repositories or infer runtime semantics. Topology-only Registry edges
+with `kind` `portfolio`, `governance`, or `integration` remain queryable but do
+not expand `PortfolioRegistry.impact()` unless the manifest explicitly sets
+`impact: true`. Unresolved external providers remain on the edge evidence but
+are not returned as project records in `affected_projects`.
 
 ## License
 

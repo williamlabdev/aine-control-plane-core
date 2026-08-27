@@ -43,8 +43,12 @@ must configure their destinations outside scanned repositories.
 `PortfolioRegistry.relationships()` and `PortfolioRegistry.source_of_truth()`
 query only records already persisted from a portable Registry snapshot. They do
 not infer runtime semantics or rescan source repositories. `impact()` includes
-the matching relationship edges and source-of-truth rules for the requested
-project.
+matching dependency edges and explicitly impact-bearing relationships for the
+requested project, but only known Registry projects are returned in
+`affected_projects`; unresolved external providers remain evidence on the
+matching edge. Topology-only `portfolio`, `governance`, and `integration` edges
+remain available through `relationships()` without expanding the change
+boundary unless the manifest sets `impact: true`.
 
 ## Compatibility
 

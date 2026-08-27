@@ -85,7 +85,9 @@ class PublicCoreTests(unittest.TestCase):
             registry = PortfolioRegistry(store)
             self.assertEqual(registry.ingest_snapshot(snapshot, self.context)["status"], "success")
             self.assertEqual(registry.get_project("reference.provider")["name"], "provider")
-            self.assertEqual(registry.impact("reference.provider")["affected_projects"][0]["project_id"], "reference.consumer")
+            impact = registry.impact("reference.provider")
+            self.assertEqual(impact["affected_projects"][0]["project_id"], "reference.consumer")
+            self.assertTrue(all(not item["project_id"].startswith("external:") for item in impact["affected_projects"]))
 
             leaked = json.loads(json.dumps(snapshot))
             leaked["artifacts"][0]["path"] = "/Users/example/private/api.yaml"
@@ -112,6 +114,9 @@ class PublicCoreTests(unittest.TestCase):
                     "2026-08-22T00:00:02+00:00",
                     "2026-08-22T00:00:03+00:00",
                     "2026-08-22T00:00:04+00:00",
+                    "2026-08-22T00:00:05+00:00",
+                    "2026-08-22T00:00:06+00:00",
+                    "2026-08-22T00:00:07+00:00",
                 )
             )
             store = LocalRecordStore(Path(directory) / "portfolio.sqlite", clock=lambda: next(clock_values))
@@ -142,6 +147,22 @@ class PublicCoreTests(unittest.TestCase):
             impact = registry.impact("core.checkout-service")
             self.assertTrue(any(edge["scope"] == "cross_root" for edge in impact["relationships"]))
             self.assertEqual(impact["source_of_truth"], registry.source_of_truth(project_id="core.checkout-service"))
+
+            topology_snapshot = {
+                **snapshot,
+                "snapshot_id": "snapshot.polyrepo.topology-only",
+                "relationships": [{
+                    "dependency_id": "rel.topology-only",
+                    "source": {"project_id": "core.web-app"},
+                    "target": {"project_id": "core.checkout-service"},
+                    "kind": "governance",
+                    "relationship_type": "portfolio_snapshot_consumer",
+                    "status": "planned",
+                    "evidence": ["core/web-app/.aine/registry.json"],
+                }],
+            }
+            self.assertEqual(registry.ingest_snapshot(topology_snapshot, self.context)["status"], "success")
+            self.assertFalse(any(edge.get("dependency_id") == "rel.topology-only" for edge in registry.impact("core.checkout-service")["relationships"]))
 
             invalid = {**snapshot, "snapshot_id": "snapshot.polyrepo.invalid", "relationships": [{"source": {}, "target": {}}]}
             self.assertEqual(registry.ingest_snapshot(invalid, self.context)["status"], "failure")

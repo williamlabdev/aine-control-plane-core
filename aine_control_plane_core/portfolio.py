@@ -220,10 +220,12 @@ class PortfolioRegistry:
             target = edge.get("target", {})
             source_id = source.get("project_id") if isinstance(source, Mapping) else None
             target_id = target.get("project_id") if isinstance(target, Mapping) else None
+            if edge.get("kind") in {"portfolio", "governance", "integration"} and edge.get("impact") is not True:
+                continue
             if source_id == project_id or target_id == project_id:
                 matching_edges.append(edge)
                 other_id = target_id if source_id == project_id else source_id
-                if other_id:
+                if other_id and not str(other_id).startswith("external:"):
                     project = self.get_project(str(other_id))
                     affected[str(other_id)] = project or {"project_id": str(other_id)}
         return {
