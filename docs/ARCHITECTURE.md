@@ -65,6 +65,17 @@ core. The private consumer must ingest the
 referenced snapshot before persisting the observation. This is a reporting
 link, not a runner start, policy grant, approval transition, or mutation API.
 
+Where a producer publishes no portable export, the reference adapter names its
+own projection instead. `AirtChainProjectionAdapter` reduces an airt run to
+`aine.control-plane.airt-chain-projection.v1`: sequence, direction, method,
+argument digest, and event hash, with every other field dropped by allow-list
+and reported in the outcome. The name is in this namespace because the shape
+belongs to this core, and the identifier is a constant because `evidence_id`
+is derived from it. The adapter never opens airt's event database; callers
+read the run and pass it in. Its outcome reports the collection while the
+observation reports the run, so a denied tool call is a `failure` observation
+carried by a `success` outcome.
+
 ## Compatibility
 
 The package release version is independent from the wire identifiers; the

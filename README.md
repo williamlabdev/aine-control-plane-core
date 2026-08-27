@@ -16,7 +16,7 @@ or a provider integration product.
 - advisory or opt-in enforced policy evaluation, including unknown and conflict states;
 - deterministic RBAC/ABAC authorization evaluation;
 - retention evaluation without deletion;
-- JSONL, SQLite, and static-fixture reference adapters;
+- JSONL, SQLite, static-fixture, and airt chain-projection reference adapters;
 - snapshot-backed `integration-observation.v1` records for report-only Orvena/airt evidence;
 - JSON Schemas, fixtures, and conformance tests for the public boundary.
 
@@ -73,6 +73,23 @@ sink = JsonlEvidenceSinkAdapter(Path("evidence.jsonl"))
 
 The destination path above is runtime configuration and is never part of a
 portable adapter configuration or evidence record.
+
+`AirtChainProjectionAdapter` turns an airt run the caller has already read into
+a snapshot-joined observation. airt publishes no portable evidence export, so
+the adapter supplies the format identifier it owns,
+`aine.control-plane.airt-chain-projection.v1`, rather than naming a format airt
+does not declare. It keeps only chain-level fields, lists what it dropped, and
+asserts no chain verification it did not perform.
+
+```python
+from aine_control_plane_core.adapters import AirtChainProjectionAdapter
+
+outcome = AirtChainProjectionAdapter().collect(
+    {"run": run, "snapshot_id": snapshot_id},
+    context,
+)
+observation = outcome["result"]
+```
 
 ## Development
 

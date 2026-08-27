@@ -1,0 +1,37 @@
+{
+  "chain_verified": true,
+  "correlation_id": "aine-portfolio-20260827",
+  "events": [
+    {
+      "args": {
+        "command": "<redacted in fixture>"
+      },
+      "args_hash": "2f3b94579f43fb59e8df8ecf8d8a231a288b641d262c4c425043c107e8e72b82",
+      "cwd": "/workspace/example",
+      "direction": "client_to_server",
+      "hash": "2146185a078162fab3d501b6934185258dff01d8495e7dfae8b091c47b27ca86",
+      "method": "native/PreToolUse",
+      "seq": 3,
+      "tool_name": "Bash"
+    },
+    {
+      "args": {
+        "command": "<redacted in fixture>"
+      },
+      "args_hash": null,
+      "cwd": "/workspace/example",
+      "direction": "meta",
+      "hash": "956c2e307adc5249be8811eadfffd4569ac9d98a592f89175e4cb20a7631ff18",
+      "method": "airt/run_end",
+      "seq": 4,
+      "tool_name": null
+    }
+  ],
+  "final_hash": "2146185a078162fab3d501b6934185258dff01d8495e7dfae8b091c47b27ca86",
+  "public_key": "ffc284f7c3f8a9b25b4607e1c1ca18f92eb1120ac70644d040b8bf94733bdc6a",
+  "rule": "no-destructive-shell",
+  "run_id": "native-claude-3cd1fb286e870cf6ed7e4d60",
+  "sealed": true,
+  "tool": "Bash",
+  "verdict": "deny"
+}
