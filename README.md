@@ -17,11 +17,19 @@ or a provider integration product.
 - deterministic RBAC/ABAC authorization evaluation;
 - retention evaluation without deletion;
 - JSONL, SQLite, and static-fixture reference adapters;
+- snapshot-backed `integration-observation.v1` records for report-only Orvena/airt evidence;
 - JSON Schemas, fixtures, and conformance tests for the public boundary.
 
 The stable wire identifiers remain under the `aine.control-plane.*.v1`
 namespace. The Python package is intentionally dependency-free and can be
 embedded by a service, CLI, CI integration, or another adapter implementation.
+
+The report-only integration contract links a producer `run_id` to a shared
+`correlation_id` and an already-ingested Registry `snapshot_id`. It carries
+normalized claims, a digest of the native producer record, and optional
+portable evidence references; it never embeds native payloads, credentials, or
+machine-local paths. `success`, `failure`, `unknown`, and `conflict` remain
+distinct observations, and `read_only` is always true.
 
 ## What is intentionally excluded
 

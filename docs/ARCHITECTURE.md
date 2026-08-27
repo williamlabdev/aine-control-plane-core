@@ -25,6 +25,7 @@ flowchart LR
 | `outcomes.py` | portable success/failure/unknown/conflict envelope | preserves uncertainty |
 | `config.py` | serializable adapter configuration | credential references plus structural secret/path guards; opaque values remain adapter-specific |
 | `validation.py` | contract, record, config, path, and digest validation | evidence-backed structural checks |
+| `integration.py` | portable Orvena/airt report-only observation contract | digest + normalized claims; no native payload or mutation |
 | `store.py` | append-only SQLite records/events and export | writes only its configured store |
 | `portfolio.py` | Registry snapshot ingest, relationship/source-of-truth views, and impact | does not rescan repositories |
 | `governance.py` | policy plus deterministic RBAC/ABAC decisions | evaluates; does not enforce external systems |
@@ -50,6 +51,17 @@ matching edge. Topology-only `portfolio`, `governance`, and `integration` edges
 remain available through `relationships()` without expanding the change
 boundary unless the manifest sets `impact: true`.
 
+## Report-only producer integration
+
+`integration-observation.v1` is the public wire contract for evidence received
+from Orvena or airt. A record carries `producer`, `project_id`, native
+`run_id`/`native_schema`, a shared `correlation_id`, and the Registry
+`snapshot_id` used as its portfolio context. Adapters digest the native report
+and copy only normalized claims; raw payloads, credentials, absolute paths, and
+execution authority stay outside the core. The private consumer must ingest the
+referenced snapshot before persisting the observation. This is a reporting
+link, not a runner start, policy grant, approval transition, or mutation API.
+
 ## Compatibility
 
 The package release version is independent from the wire identifiers; the
@@ -63,3 +75,8 @@ optional `source_of_truth` array, and source-of-truth queries use the latest
 observed declaration for a stable `source_rule_id`. A missing declaration is
 not treated as a tombstone because snapshots are append-only observations;
 existing dependency records remain accepted under the prior ingest boundary.
+
+The `integration-observation.v1` contract is additive: consumers
+that do not use Orvena/airt observations remain unchanged. Its validator is
+portable and dependency-free, and producers remain responsible for exporting
+their native evidence without importing this package.

@@ -1,0 +1,19 @@
+{
+  "schema": "aine.control-plane.integration-observation.v1",
+  "evidence_id": "integration.orvena.fixture.001",
+  "correlation_id": "corr.fixture.001",
+  "producer": "orvena",
+  "project_id": "aine.orvena",
+  "run_id": "orvena-run-fixture-001",
+  "snapshot_id": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "native_schema": "orvena-evidence-v1",
+  "native_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "status": "failure",
+  "claims": {
+    "completed": false,
+    "sandbox": "enforced",
+    "blockers": ["scope refusal"]
+  },
+  "evidence_refs": ["orvena://evidence/orvena-run-fixture-001"],
+  "read_only": true
+}

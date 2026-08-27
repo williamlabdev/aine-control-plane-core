@@ -81,6 +81,10 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
         errors.append("record must contain a portable identity")
     for path in find_local_paths(record):
         errors.append(f"runtime-local path is not allowed: {path}")
+    if record.get("schema") == "aine.control-plane.integration-observation.v1":
+        from .integration import validate_integration_observation
+
+        errors.extend(validate_integration_observation(record))
     return errors
 
 
