@@ -17,10 +17,6 @@ from typing import Any, Mapping
 INTEGRATION_OBSERVATION_SCHEMA = "aine.control-plane.integration-observation.v1"
 INTEGRATION_STATUSES = ("success", "failure", "unknown", "conflict")
 PRODUCER_PROJECTS = {"orvena": "aine.orvena", "airt": "aine.airt"}
-PRODUCER_NATIVE_SCHEMAS = {
-    "orvena": "orvena-evidence-v1",
-    "airt": "airt-event-log-v1",
-}
 
 _ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _DIGEST_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -79,16 +75,12 @@ def validate_integration_observation(record: Mapping[str, Any]) -> list[str]:
             errors.append(error)
     producer = record.get("producer")
     project_id = record.get("project_id")
-    native_schema = record.get("native_schema")
     if isinstance(producer, str):
         expected_project = PRODUCER_PROJECTS.get(producer)
         if expected_project is None:
             errors.append(f"unsupported integration producer: {producer}")
         elif project_id != expected_project:
             errors.append(f"producer {producer} must use project_id {expected_project}")
-        expected_schema = PRODUCER_NATIVE_SCHEMAS.get(producer)
-        if expected_schema and native_schema != expected_schema:
-            errors.append(f"producer {producer} must use native_schema {expected_schema}")
     if not isinstance(record.get("native_digest"), str) or not _DIGEST_PATTERN.fullmatch(str(record.get("native_digest"))):
         errors.append("native_digest must be a sha256 digest")
     if record.get("status") not in INTEGRATION_STATUSES:
@@ -118,15 +110,20 @@ def build_integration_observation(
     correlation_id: str,
     run_id: str,
     snapshot_id: str,
+    native_schema: str,
     status: str,
     claims: Mapping[str, Any],
     native: Mapping[str, Any],
     evidence_refs: list[str] | tuple[str, ...] = (),
 ) -> dict[str, Any]:
-    """Build a deterministic observation without embedding the native payload."""
+    """Build a deterministic observation without embedding the native payload.
+
+    `native_schema` is supplied by the adapter rather than looked up here. Only
+    the adapter knows which format it digested, and a producer that publishes
+    no portable export has no identifier for this core to assert on its behalf.
+    """
 
     project_id = PRODUCER_PROJECTS.get(producer, "")
-    native_schema = PRODUCER_NATIVE_SCHEMAS.get(producer, "")
     native_digest = _canonical_digest(native)
     identity = _canonical_digest(
         {
@@ -134,6 +131,7 @@ def build_integration_observation(
             "correlation_id": correlation_id,
             "run_id": run_id,
             "snapshot_id": snapshot_id,
+            "native_schema": native_schema,
             "native_digest": native_digest,
         }
     )

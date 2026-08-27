@@ -26,10 +26,11 @@ embedded by a service, CLI, CI integration, or another adapter implementation.
 
 The report-only integration contract links a producer `run_id` to a shared
 `correlation_id` and an already-ingested Registry `snapshot_id`. It carries
-normalized claims, a digest of the native producer record, and optional
-portable evidence references; it never embeds native payloads, credentials, or
-machine-local paths. `success`, `failure`, `unknown`, and `conflict` remain
-distinct observations, and `read_only` is always true.
+normalized claims, a digest of the native producer record, the identifier the
+producing adapter gives that record's format, and optional portable evidence
+references; it never embeds native payloads, credentials, or machine-local
+paths. `success`, `failure`, `unknown`, and `conflict` remain distinct
+observations, and `read_only` is always true.
 
 ## What is intentionally excluded
 

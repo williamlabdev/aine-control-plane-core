@@ -27,7 +27,7 @@
     "project_id": {"enum": ["aine.orvena", "aine.airt"]},
     "run_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
     "snapshot_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
-    "native_schema": {"enum": ["orvena-evidence-v1", "airt-event-log-v1"]},
+    "native_schema": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
     "native_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "status": {"enum": ["success", "failure", "unknown", "conflict"]},
     "claims": {"type": "object"},

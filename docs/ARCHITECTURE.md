@@ -56,9 +56,12 @@ boundary unless the manifest sets `impact: true`.
 `integration-observation.v1` is the public wire contract for evidence received
 from Orvena or airt. A record carries `producer`, `project_id`, native
 `run_id`/`native_schema`, a shared `correlation_id`, and the Registry
-`snapshot_id` used as its portfolio context. Adapters digest the native report
-and copy only normalized claims; raw payloads, credentials, absolute paths, and
-execution authority stay outside the core. The private consumer must ingest the
+`snapshot_id` used as its portfolio context. The adapter states which native
+format it digested; the core does not name a producer's format on its behalf,
+because a producer that publishes no portable export has no identifier to
+assert. Adapters digest the native report and copy only normalized claims; raw
+payloads, credentials, absolute paths, and execution authority stay outside the
+core. The private consumer must ingest the
 referenced snapshot before persisting the observation. This is a reporting
 link, not a runner start, policy grant, approval transition, or mutation API.
 

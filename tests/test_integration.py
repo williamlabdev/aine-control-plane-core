@@ -29,6 +29,7 @@ class IntegrationObservationTests(unittest.TestCase):
             correlation_id="corr.e2e.001",
             run_id="native-run-001",
             snapshot_id="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            native_schema="orvena-evidence-v1",
             status="success",
             claims={"completed": True, "sandbox": "enforced"},
             native=native,
@@ -41,11 +42,58 @@ class IntegrationObservationTests(unittest.TestCase):
             correlation_id="corr.e2e.001",
             run_id="native-run-001",
             snapshot_id="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            native_schema="orvena-evidence-v1",
             status="success",
             claims={"completed": True, "sandbox": "enforced"},
             native=native,
         )
         self.assertEqual(record, same)
+
+    def test_producer_states_its_own_native_schema(self):
+        # The core no longer asserts an identifier on a producer's behalf: a
+        # producer that publishes no portable export has none to assert.
+        record = build_integration_observation(
+            producer="airt",
+            correlation_id="corr.e2e.002",
+            run_id="native-claude-001",
+            snapshot_id="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            native_schema="airt.native-hook.v1",
+            status="failure",
+            claims={"verdict": "deny", "rule": "no-destructive-shell"},
+            native={"run_id": "native-claude-001", "final_hash": "0" * 64},
+        )
+        self.assertEqual(validate_record(record), [])
+        self.assertEqual(record["native_schema"], "airt.native-hook.v1")
+        self.assertEqual(record["project_id"], "aine.airt")
+
+    def test_native_schema_must_be_a_portable_identifier(self):
+        record = json.loads(FIXTURE.read_text(encoding="utf-8"))
+        record["native_schema"] = "the log format we happen to write"
+        self.assertTrue(any("native_schema" in error for error in validate_integration_observation(record)))
+        with self.assertRaises(TypeError):
+            build_integration_observation(
+                producer="orvena",
+                correlation_id="corr.e2e.003",
+                run_id="native-run-003",
+                snapshot_id="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                status="success",
+                claims={},
+                native={},
+            )
+
+    def test_observations_of_the_same_run_stay_distinct_per_native_format(self):
+        common = dict(
+            producer="orvena",
+            correlation_id="corr.e2e.004",
+            run_id="native-run-004",
+            snapshot_id="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            status="success",
+            claims={"completed": True},
+            native={"completed": True},
+        )
+        first = build_integration_observation(native_schema="orvena-evidence-v1", **common)
+        second = build_integration_observation(native_schema="orvena-evidence-v2", **common)
+        self.assertNotEqual(first["evidence_id"], second["evidence_id"])
 
     def test_rejects_project_mismatch_and_local_paths(self):
         record = json.loads(FIXTURE.read_text(encoding="utf-8"))
