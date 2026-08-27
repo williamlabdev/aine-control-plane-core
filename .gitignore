@@ -6,6 +6,8 @@ dist/
 build/
 *.egg-info/
 .aine/
+!/.aine/
+!/.aine/registry.json
 *.sqlite
 *.sqlite3
 *.db
