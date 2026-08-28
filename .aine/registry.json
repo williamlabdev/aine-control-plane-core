@@ -23,8 +23,7 @@
     {"id": "control-plane-core-integration-fixture", "path": "aine_control_plane_core/fixtures/integration_observation.json", "kind": "integration_fixture", "role": "test", "status": "present", "risk": "high", "approval_required": true}
   ],
   "relationships": [
-    {"target": "tools.aine-registry", "relationship_type": "registry_snapshot_consumer", "kind": "governance", "strength": "required", "status": "planned"},
-    {"target": "tools.aine-control-plane", "relationship_type": "public_core_compatibility", "kind": "governance", "strength": "required", "status": "active"}
+    {"target": "tools.aine-registry", "relationship_type": "registry_snapshot_consumer", "kind": "governance", "strength": "required", "status": "planned"}
   ],
   "source_of_truth": [
     {"domain": "control_plane.core_boundary", "authority": {"project_id": "tools.aine-control-plane-core", "artifact": "control-plane-core-readme"}, "status": "declared"},
