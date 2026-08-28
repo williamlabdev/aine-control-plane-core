@@ -12,3 +12,8 @@ build/
 *.sqlite3
 *.db
 *.jsonl
+
+# Local portfolio governance descriptor; not published with the public repo.
+# Its layer/line taxonomy and decision notes come from the private portfolio
+# documents, so publishing it publishes those. Kept in the working tree.
+/manifest.yaml
