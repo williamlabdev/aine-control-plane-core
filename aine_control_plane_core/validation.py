@@ -107,12 +107,14 @@ def find_local_paths(value: Any, path: str = "record") -> list[str]:
         for index, nested in enumerate(value):
             found.extend(find_local_paths(nested, f"{path}[{index}]"))
         return found
-    if isinstance(value, str) and (
-        value.lower().startswith(("/", "~/", "file://"))
-        or value.startswith(("\\\\", "//"))
-        or bool(re.match(r"^[A-Za-z]:[\\/]", value))
-    ):
-        return [path]
+    if isinstance(value, str):
+        candidate = value.strip()
+        if (
+            candidate.lower().startswith(("/", "~", "file:"))
+            or candidate.startswith("\\")
+            or bool(re.match(r"^[A-Za-z]:", candidate))
+        ):
+            return [path]
     return []
 
 

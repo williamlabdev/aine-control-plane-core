@@ -213,7 +213,10 @@ class LocalRecordStore:
         if record_type:
             query += " WHERE record_type = ?"
             parameters = (record_type,)
-        query += " ORDER BY created_at, record_id"
+        # Preserve insertion order when producers use the same clock value.
+        # Snapshot projection treats created_at as the primary observation
+        # signal and rowid as the deterministic tie-breaker.
+        query += " ORDER BY created_at, rowid"
         with self._connect() as connection:
             rows = connection.execute(query, parameters).fetchall()
         return [self._row_to_dict(row) for row in rows]
