@@ -1,6 +1,6 @@
 {
   "project": {
-    "id": "tools.aine-control-plane-core",
+    "id": "aine.aine-control-plane-core",
     "owner": "william",
     "ownership": {"team": "aine-governance", "owners": ["william"], "delegates": []},
     "kind": "control_plane_core_contracts",
@@ -23,11 +23,11 @@
     {"id": "control-plane-core-integration-fixture", "path": "aine_control_plane_core/fixtures/integration_observation.json", "kind": "integration_fixture", "role": "test", "status": "present", "risk": "high", "approval_required": true}
   ],
   "relationships": [
-    {"target": "tools.aine-registry", "relationship_type": "registry_snapshot_consumer", "kind": "governance", "strength": "required", "status": "planned"}
+    {"target": "aine.aine-registry", "relationship_type": "registry_snapshot_consumer", "kind": "governance", "strength": "required", "status": "planned"}
   ],
   "source_of_truth": [
-    {"domain": "control_plane.core_boundary", "authority": {"project_id": "tools.aine-control-plane-core", "artifact": "control-plane-core-readme"}, "status": "declared"},
-    {"domain": "control_plane.core_architecture", "authority": {"project_id": "tools.aine-control-plane-core", "artifact": "control-plane-core-architecture"}, "status": "declared"},
-    {"domain": "control_plane.core_contract", "authority": {"project_id": "tools.aine-control-plane-core", "artifact": "control-plane-core-contracts"}, "status": "declared"}
+    {"domain": "control_plane.core_boundary", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-readme"}, "status": "declared"},
+    {"domain": "control_plane.core_architecture", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-architecture"}, "status": "declared"},
+    {"domain": "control_plane.core_contract", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-contracts"}, "status": "declared"}
   ]
 }
