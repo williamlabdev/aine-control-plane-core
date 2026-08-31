@@ -1,0 +1,15 @@
+{
+  "schema": "aine.control-plane.execution-request.v1",
+  "execution_id": "execution.remediation.fixture",
+  "plan_id": "remediation.plan.fixture",
+  "revision": 1,
+  "status": "requested",
+  "mode": "dry_run",
+  "runner_kind": "local_runner",
+  "mutation_scope": {"source_repositories": false, "git": false, "deployment": false},
+  "validation": {"required_checks": ["registry.validate", "preflight"]},
+  "evidence_ids": ["evidence.fixture"],
+  "requested_by": "fixture",
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "read_only": true
+}

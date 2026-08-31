@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/execution-request.v1.schema.json",
+  "title": "AINE Control Plane Execution Request v1",
+  "type": "object",
+  "required": ["schema", "execution_id", "plan_id", "revision", "status", "mode", "runner_kind", "mutation_scope", "validation", "evidence_ids", "requested_by", "created_at", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.execution-request.v1"},
+    "execution_id": {"type": "string", "minLength": 1},
+    "plan_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["requested", "running", "completed", "failed", "unknown", "cancelled"]},
+    "mode": {"const": "dry_run"},
+    "runner_kind": {"const": "local_runner"},
+    "mutation_scope": {"type": "object", "required": ["source_repositories", "git", "deployment"], "properties": {"source_repositories": {"const": false}, "git": {"const": false}, "deployment": {"const": false}}},
+    "validation": {"type": "object"},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "requested_by": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "reported_at": {"type": "string"},
+    "reported_by": {"type": "string"},
+    "previous_revision": {"type": "integer", "minimum": 1},
+    "result": {"type": "object"},
+    "read_only": {"const": true}
+  }
+}

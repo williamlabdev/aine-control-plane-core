@@ -1,0 +1,20 @@
+{
+  "schema": "aine.control-plane.remediation-plan.v1",
+  "plan_id": "remediation.plan.fixture",
+  "revision": 1,
+  "status": "draft",
+  "title": "Repair unresolved API dependency evidence",
+  "rationale": "The relationship remains unknown and needs a reviewed remediation path.",
+  "finding": {"finding_id": "DEP-001", "severity": "medium", "summary": "The API dependency has no authoritative evidence."},
+  "scope": {"project_ids": ["reference.consumer"]},
+  "strategy": {"kind": "evidence_update", "description": "Prepare a change and validate the resulting relationship evidence."},
+  "validation": {"required_checks": ["registry.validate", "preflight"]},
+  "acceptance_criteria": ["The dependency has an evidence-backed status."],
+  "evidence_ids": ["evidence.fixture"],
+  "requested_by": "fixture",
+  "owner": "fixture",
+  "risk": "medium",
+  "approval_required": true,
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "read_only": true
+}

@@ -1,0 +1,434 @@
+from __future__ import annotations
+
+import json
+import tempfile
+import threading
+import unittest
+from datetime import datetime, timezone
+from pathlib import Path
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+from aine_control_plane_core.approval import ApprovalWorkflow
+from aine_control_plane_core.contracts import AdapterContext
+from aine_control_plane_core.governance import authorize, evaluate_policy
+from aine_control_plane_core.portfolio import PortfolioRegistry, validate_snapshot
+from aine_control_plane_core.retention import evaluate_store_retention
+from aine_control_plane_core.server import ControlPlaneHTTPServer
+from aine_control_plane_core.service import ControlPlaneService
+from aine_control_plane_core.store import LocalRecordStore
+from aine_control_plane_core.validation import validate_authorization_decision, validate_outcome, validate_policy_decision
+
+
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+
+
+class V1CoreTests(unittest.TestCase):
+    def setUp(self):
+        self.context = AdapterContext(
+            "request-v1",
+            actor={"id": "agent.codex", "roles": ["approver"], "teams": ["platform"]},
+        )
+
+    def test_policy_advisory_and_enforced_modes_preserve_unknowns(self):
+        policy = {"policy_id": "policy.release", "required_checks": ["tests", "security"]}
+        checks = [
+            {"check_id": "tests", "status": "pass", "evidence_ids": ["evidence.tests"]},
+            {"check_id": "security", "status": "fail", "evidence_ids": ["evidence.security"]},
+        ]
+        advisory = evaluate_policy(policy, checks, self.context)
+        self.assertEqual(validate_policy_decision(advisory), [])
+        self.assertEqual(advisory["status"], "fail")
+        self.assertFalse(advisory["blocked"])
+        self.assertEqual(advisory["evidence_ids"], ["evidence.tests", "evidence.security"])
+
+        enforced = evaluate_policy(policy, checks, self.context, mode="enforced")
+        self.assertEqual(enforced["status"], "fail")
+        self.assertTrue(enforced["blocked"])
+
+        unknown = evaluate_policy(policy, [{"check_id": "tests", "status": "pass"}], self.context, mode="enforced")
+        self.assertEqual(unknown["status"], "unknown")
+        self.assertTrue(unknown["blocked"])
+
+    def test_rbac_and_abac_authorization(self):
+        subject = {
+            "subject_id": "agent.codex",
+            "roles": ["developer"],
+            "teams": ["platform"],
+            "attributes": {"environment": "staging"},
+        }
+        rules = [
+            {"rule_id": "rule.deploy-staging", "effect": "allow", "action": "deploy", "resource": "service/*", "roles": ["developer"], "attributes": {"environment": "staging"}},
+            {"rule_id": "rule.deny-prod", "effect": "deny", "action": "deploy", "resource": "service/production"},
+        ]
+        allowed = authorize(subject, rules, "deploy", "service/checkout", self.context)
+        self.assertEqual(validate_authorization_decision(allowed), [])
+        self.assertEqual(allowed["status"], "allow")
+        denied = authorize(subject, rules, "deploy", "service/production", self.context)
+        self.assertEqual(denied["status"], "deny")
+        unknown = authorize({"subject_id": "unknown", "roles": ["developer"], "attributes": {}}, rules, "deploy", "service/checkout", self.context)
+        self.assertEqual(unknown["status"], "unknown")
+
+    def test_store_rejects_nonportable_records_and_event_payloads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
+            record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.path", "claims": {"path": "/Users/example/private.txt"}}
+
+            rejected = store.put(record, self.context)
+            self.assertEqual(rejected["status"], "failure")
+            self.assertEqual(rejected["error_code"], "invalid_record")
+
+            event = store.append_event("evidence.recorded", "evidence.path", record, self.context)
+            self.assertEqual(event["status"], "failure")
+            self.assertEqual(event["error_code"], "invalid_event_payload")
+
+            # The append-only trail is what this product sells; a rejected
+            # payload must leave no trace behind it.
+            self.assertEqual(store.list_events(), [])
+
+    def test_append_event_requires_a_read_only_request_context(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
+            record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.context", "claims": {"status": "pass"}}
+
+            anonymous = store.append_event("evidence.recorded", "evidence.context", record, AdapterContext(""))
+            self.assertEqual(anonymous["status"], "failure")
+            self.assertEqual(anonymous["error_code"], "invalid_context")
+
+            writable = AdapterContext("request-v1", actor=self.context.actor, read_only=False)
+            mutable = store.append_event("evidence.recorded", "evidence.context", record, writable)
+            self.assertEqual(mutable["status"], "failure")
+            self.assertEqual(mutable["error_code"], "read_only_context_required")
+
+            self.assertEqual(store.list_events(), [])
+
+    def test_store_approval_retention_and_portfolio_are_append_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite", clock=lambda: "2026-01-10T00:00:00+00:00")
+            record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.store", "claims": {"status": "pass"}}
+            first = store.put(record, self.context)
+            self.assertEqual(first["status"], "success")
+            duplicate = store.put(record, self.context)
+            self.assertTrue(duplicate["result"]["duplicate"])
+            conflict = store.put({**record, "claims": {"status": "fail"}}, self.context)
+            self.assertEqual(conflict["status"], "conflict")
+            self.assertEqual(validate_outcome(conflict), [])
+
+            store.append_event("evidence.recorded", "evidence.store", record, self.context)
+            exported = store.export(Path(directory) / "export.json")
+            self.assertEqual(exported["record_count"], 1)
+            self.assertEqual(len(store.list_events()), 1)
+
+            retention = evaluate_store_retention(
+                store,
+                {"retain_days": 1},
+                now=lambda: datetime(2026, 1, 12, tzinfo=timezone.utc),
+            )
+            self.assertEqual(retention["decisions"][0]["status"], "review")
+
+            portfolio = PortfolioRegistry(store)
+            snapshot = json.loads((FIXTURE_DIR / "registry_snapshot.json").read_text(encoding="utf-8"))
+            leaked = json.loads(json.dumps(snapshot))
+            leaked["artifacts"][0]["path"] = "/Users/example/private/api.yaml"
+            self.assertEqual(portfolio.ingest_snapshot(leaked, self.context)["status"], "failure")
+            ingested = portfolio.ingest_snapshot(snapshot, self.context)
+            self.assertEqual(ingested["status"], "success")
+            self.assertEqual(portfolio.get_project("reference.provider")["name"], "provider")
+            impact = portfolio.impact("reference.provider")
+            self.assertEqual(impact["affected_projects"][0]["project_id"], "reference.consumer")
+
+            portable_relative = json.loads(json.dumps(snapshot))
+            portable_relative["snapshot_id"] = "snapshot.relative-paths"
+            portable_relative["projects"][0]["evidence"] = ["./provider/pyproject.toml"]
+            portable_relative["artifacts"][0]["workspace_path"] = "./provider/api.yaml"
+            portable_relative["artifacts"][0]["evidence"] = ["../aine-registry/registry/schema/registry.v1.schema.json"]
+            portable_relative["dependencies"][0]["reference"] = {"reference": "../aine-registry/README.md"}
+            relative_ingest = portfolio.ingest_snapshot(portable_relative, self.context)
+            self.assertEqual(relative_ingest["status"], "success")
+            structured_edge = next(edge for edge in portfolio.relationships() if edge["dependency_id"] == "dependency.reference.1")
+            self.assertIsInstance(structured_edge["evidence"], dict)
+            self.assertNotIn("evidence_refs", structured_edge)
+
+            windows_path = json.loads(json.dumps(snapshot))
+            windows_path["snapshot_id"] = "snapshot.windows-path"
+            windows_path["artifacts"][0]["path"] = "C:\\Users\\private\\api.yaml"
+            self.assertEqual(portfolio.ingest_snapshot(windows_path, self.context)["status"], "failure")
+
+            unc_path = json.loads(json.dumps(snapshot))
+            unc_path["snapshot_id"] = "snapshot.unc-path"
+            unc_path["artifacts"][0]["path"] = "\\\\server\\share\\api.yaml"
+            self.assertEqual(portfolio.ingest_snapshot(unc_path, self.context)["status"], "failure")
+
+            file_uri = json.loads(json.dumps(snapshot))
+            file_uri["snapshot_id"] = "snapshot.file-uri"
+            file_uri["artifacts"][0]["path"] = "file:/Users/private/api.yaml"
+            self.assertEqual(portfolio.ingest_snapshot(file_uri, self.context)["status"], "failure")
+
+    def test_approval_workflow_requires_role_and_reaches_approved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
+            workflow = ApprovalWorkflow(store)
+            request = {
+                "approval_id": "approval.release.1",
+                "subject": {"change_id": "change.1"},
+                "scope": {"project_id": "reference.consumer"},
+                "requested_by": "agent.codex",
+                "required_approvals": 1,
+                "required_roles": ["approver"],
+            }
+            created = workflow.create(request, self.context)
+            self.assertEqual(created["status"], "success")
+            approved = workflow.decide("approval.release.1", "approve", "validated", self.context)
+            self.assertEqual(approved["status"], "success")
+            self.assertEqual(workflow.get("approval.release.1")["status"], "approved")
+
+            unauthorized = AdapterContext("request-unauthorized", actor={"id": "agent.other", "roles": ["developer"]})
+            rejected = workflow.decide("approval.release.1", "reject", "late", unauthorized)
+            self.assertEqual(rejected["status"], "failure")
+
+    def test_portfolio_surface_queries_dependencies_relationships_and_authority(self):
+        with tempfile.TemporaryDirectory() as directory:
+            timestamps = iter(
+                [
+                    "2026-01-01T00:00:00+00:00",
+                    "2026-01-01T00:00:01+00:00",
+                    "2026-01-02T00:00:00+00:00",
+                    "2026-01-02T00:00:01+00:00",
+                ]
+            )
+            store = LocalRecordStore(
+                Path(directory) / "control-plane.sqlite",
+                clock=lambda: next(timestamps, "2026-01-03T00:00:00+00:00"),
+            )
+            portfolio = PortfolioRegistry(store)
+            snapshot = json.loads((FIXTURE_DIR / "registry_semantics_snapshot.json").read_text(encoding="utf-8"))
+
+            ingested = portfolio.ingest_snapshot(snapshot, self.context)
+            self.assertEqual(ingested["status"], "success")
+
+            relationships = portfolio.relationships()
+            self.assertEqual(
+                {edge.get("dependency_id") for edge in relationships},
+                {"dep.polyrepo.cross-root", "dep.polyrepo.web-app", "rel.polyrepo.service-client"},
+            )
+            self.assertTrue(all(edge.get("observed_snapshot_id") == "snapshot.polyrepo.semantic.1" for edge in relationships))
+            cross_root = portfolio.relationships(project_id="core.checkout-service", status="planned")
+            self.assertEqual([edge["dependency_id"] for edge in cross_root], ["dep.polyrepo.cross-root"])
+            explicit = portfolio.relationships(relationship_type="service_client")
+            self.assertEqual([edge["dependency_id"] for edge in explicit], ["rel.polyrepo.service-client"])
+            self.assertEqual(explicit[0]["evidence"], ["web-app/.aine/registry.json"])
+            runtime_edges = portfolio.relationships(relationship_type="runtime_api")
+            self.assertEqual(
+                {edge["dependency_id"] for edge in runtime_edges},
+                {"dep.polyrepo.cross-root", "dep.polyrepo.web-app"},
+            )
+
+            source_rules = portfolio.source_of_truth(domain="checkout.api")
+            self.assertEqual(len(source_rules), 1)
+            self.assertEqual(source_rules[0]["authority"]["project_id"], "core.checkout-service")
+            self.assertEqual(source_rules[0]["observed_snapshot_id"], "snapshot.polyrepo.semantic.1")
+            self.assertEqual(
+                portfolio.source_of_truth(project_id="side-projects.content-tool"),
+                [],
+            )
+            impact = portfolio.impact("core.checkout-service")
+            self.assertEqual(impact["source_of_truth"], source_rules)
+            self.assertEqual(portfolio.snapshot_ids(), ["snapshot.polyrepo.semantic.1"])
+
+            updated = json.loads(json.dumps(snapshot))
+            updated["snapshot_id"] = "snapshot.polyrepo.semantic.2"
+            updated["dependencies"][0]["status"] = "active"
+            updated["dependencies"][0]["evidence"].append("content-tool/.aine/registry.v2.json")
+            updated["relationships"][0]["status"] = "conflict"
+            updated["relationships"][0]["evidence"].append("web-app/.aine/registry.v2.json")
+            updated["source_of_truth"][0]["authority"]["project_id"] = "core.web-app"
+            updated["source_of_truth"][0]["status"] = "conflict"
+            updated["source_of_truth"][0]["evidence"].append("web-app/.aine/registry.v2.json")
+            self.assertEqual(portfolio.ingest_snapshot(updated, self.context)["status"], "success")
+            active_edges = portfolio.relationships(project_id="core.checkout-service", status="active")
+            self.assertEqual(
+                [edge["dependency_id"] for edge in active_edges],
+                ["dep.polyrepo.cross-root", "dep.polyrepo.web-app"],
+            )
+            current_cross_root = [edge for edge in active_edges if edge.get("dependency_id") == "dep.polyrepo.cross-root"]
+            self.assertEqual([edge["dependency_id"] for edge in current_cross_root], ["dep.polyrepo.cross-root"])
+            self.assertEqual(
+                current_cross_root[0]["evidence"],
+                ["content-tool/.aine/registry.json", "content-tool/.aine/registry.v2.json"],
+            )
+            self.assertEqual(current_cross_root[0]["observed_snapshot_id"], "snapshot.polyrepo.semantic.2")
+            self.assertEqual(
+                current_cross_root[0]["evidence_refs"],
+                ["content-tool/.aine/registry.json", "content-tool/.aine/registry.v2.json"],
+            )
+            self.assertEqual(portfolio.relationships(status="planned"), [])
+            self.assertEqual(portfolio.relationships(relationship_type="service_client")[0]["status"], "conflict")
+            current_rule = portfolio.source_of_truth(domain="checkout.api")[0]
+            self.assertEqual(current_rule["authority"]["project_id"], "core.web-app")
+            self.assertEqual(current_rule["observed_snapshot_id"], "snapshot.polyrepo.semantic.2")
+            self.assertEqual(
+                current_rule["evidence_refs"],
+                ["checkout-service/.aine/registry.json", "web-app/.aine/registry.v2.json"],
+            )
+            self.assertEqual(portfolio.source_of_truth(project_id="core.checkout-service"), [])
+            self.assertEqual(portfolio.snapshot_ids(), ["snapshot.polyrepo.semantic.1", "snapshot.polyrepo.semantic.2"])
+
+            malformed = json.loads(json.dumps(snapshot))
+            malformed["snapshot_id"] = "snapshot.invalid-relationship"
+            malformed["relationships"] = [{"source": {}, "target": {}, "evidence": ["ok"]}]
+            rejected = portfolio.ingest_snapshot(malformed, self.context)
+            self.assertEqual(rejected["status"], "failure")
+            self.assertEqual(rejected["error_code"], "invalid_snapshot")
+
+            malformed_dependency = json.loads(json.dumps(snapshot))
+            malformed_dependency["snapshot_id"] = "snapshot.invalid-dependency"
+            malformed_dependency["dependencies"] = [{"dependency_id": "bad"}]
+            self.assertEqual(portfolio.ingest_snapshot(malformed_dependency, self.context)["status"], "failure")
+
+            malformed_schema = json.loads(json.dumps(snapshot))
+            malformed_schema["snapshot_id"] = 42
+            malformed_schema["schema"] = "aine.registry.other"
+            self.assertEqual(portfolio.ingest_snapshot(malformed_schema, self.context)["status"], "failure")
+
+            malformed_types = json.loads(json.dumps(snapshot))
+            malformed_types["snapshot_id"] = "snapshot.invalid-types"
+            malformed_types["dependencies"][0]["source"]["project_id"] = 7
+            malformed_types["dependencies"][0]["status"] = 1
+            malformed_types["dependencies"][0]["evidence_refs"] = [1]
+            self.assertTrue(validate_snapshot(malformed_types))
+            self.assertEqual(portfolio.ingest_snapshot(malformed_types, self.context)["status"], "failure")
+
+            legacy_rule = json.loads(json.dumps(snapshot))
+            legacy_rule["snapshot_id"] = "snapshot.legacy-sot.1"
+            legacy_rule["source_of_truth"][0].pop("source_rule_id", None)
+            legacy_rule["source_of_truth"][0]["domain"] = "legacy.checkout.api"
+            self.assertEqual(portfolio.ingest_snapshot(legacy_rule, self.context)["status"], "success")
+            legacy_update = json.loads(json.dumps(legacy_rule))
+            legacy_update["snapshot_id"] = "snapshot.legacy-sot.2"
+            legacy_update["source_of_truth"][0]["status"] = "conflict"
+            legacy_update["source_of_truth"][0]["evidence"].append("legacy/updated.json")
+            self.assertEqual(portfolio.ingest_snapshot(legacy_update, self.context)["status"], "success")
+            legacy_rules = portfolio.source_of_truth(domain="legacy.checkout.api")
+            self.assertEqual(len(legacy_rules), 1)
+            self.assertEqual(legacy_rules[0]["status"], "conflict")
+            self.assertIn("legacy/updated.json", legacy_rules[0]["evidence_refs"])
+
+            evidence_gap = json.loads(json.dumps(legacy_update))
+            evidence_gap["snapshot_id"] = "snapshot.legacy-sot.3"
+            evidence_gap["dependencies"][0].pop("evidence", None)
+            evidence_gap["dependencies"][0]["evidence_refs"] = []
+            evidence_gap["dependencies"][0]["status"] = "active"
+            self.assertEqual(portfolio.ingest_snapshot(evidence_gap, self.context)["status"], "success")
+            retained_edge = portfolio.relationships(relationship_type="runtime_api", status="active")
+            retained_cross_root = next(edge for edge in retained_edge if edge["dependency_id"] == "dep.polyrepo.cross-root")
+            self.assertIn("content-tool/.aine/registry.json", retained_cross_root["evidence_refs"])
+
+            for index, leaked_path in enumerate((r"\Users\private\api.yaml", r"C:Users\private\api.yaml", "~otheruser/api.yaml", "  /Users/private/api.yaml")):
+                bypass = json.loads(json.dumps(snapshot))
+                bypass["snapshot_id"] = f"snapshot.path-bypass-{index}"
+                bypass["artifacts"][0]["path"] = leaked_path
+                self.assertEqual(portfolio.ingest_snapshot(bypass, self.context)["status"], "failure")
+
+            with tempfile.TemporaryDirectory() as tie_directory:
+                tie_store = LocalRecordStore(
+                    Path(tie_directory) / "control-plane.sqlite",
+                    clock=lambda: "2026-01-03T00:00:00+00:00",
+                )
+                tie_portfolio = PortfolioRegistry(tie_store)
+                first = json.loads(json.dumps(snapshot))
+                first["snapshot_id"] = "snapshot.tie.2"
+                first["dependencies"][0]["status"] = "old"
+                second = json.loads(json.dumps(snapshot))
+                second["snapshot_id"] = "snapshot.tie.1"
+                second["dependencies"][0]["status"] = "new"
+                self.assertEqual(tie_portfolio.ingest_snapshot(first, self.context)["status"], "success")
+                self.assertEqual(tie_portfolio.ingest_snapshot(second, self.context)["status"], "success")
+                tied_edge = next(edge for edge in tie_portfolio.relationships() if edge["dependency_id"] == "dep.polyrepo.cross-root")
+                self.assertEqual(tied_edge["status"], "new")
+                self.assertEqual(tied_edge["observed_snapshot_id"], "snapshot.tie.1")
+
+    def test_self_hosted_http_transport_exposes_read_only_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
+            service = ControlPlaneService(
+                store,
+                authorization_rules=[
+                    {"rule_id": "rule.read-portfolio", "effect": "allow", "action": "read", "resource": "portfolio/*", "roles": ["developer"]}
+                ],
+            )
+            server = ControlPlaneHTTPServer(("127.0.0.1", 0), service)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            base = f"http://127.0.0.1:{server.server_address[1]}"
+            try:
+                with urlopen(f"{base}/healthz") as response:
+                    health = json.loads(response.read())
+                self.assertEqual(health["status"], "ok")
+
+                snapshot = json.loads((FIXTURE_DIR / "registry_snapshot.json").read_text(encoding="utf-8"))
+                request = Request(
+                    f"{base}/v1/snapshots",
+                    data=json.dumps(snapshot).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-AINE-Actor": "agent.codex"},
+                    method="POST",
+                )
+                with urlopen(request) as response:
+                    ingested = json.loads(response.read())
+                self.assertEqual(ingested["status"], "success")
+
+                with urlopen(f"{base}/v1/relationships?project_id=reference.consumer") as response:
+                    relationship_view = json.loads(response.read())
+                self.assertEqual(relationship_view["schema"], "aine.control-plane.relationships-view.v1")
+                self.assertTrue(relationship_view["read_only"])
+                self.assertEqual([edge["dependency_id"] for edge in relationship_view["relationships"]], ["dependency.reference.1"])
+                self.assertEqual(relationship_view["relationships"][0]["observed_snapshot_id"], "snapshot.reference.1")
+                self.assertEqual(relationship_view["provenance"]["snapshot_count"], 1)
+
+                with urlopen(f"{base}/v1/source-of-truth?domain=reference.api") as response:
+                    source_view = json.loads(response.read())
+                self.assertEqual(source_view["schema"], "aine.control-plane.source-of-truth-view.v1")
+                self.assertTrue(source_view["read_only"])
+                self.assertEqual(source_view["source_of_truth"][0]["authority"]["project_id"], "reference.provider")
+                self.assertEqual(source_view["source_of_truth"][0]["observed_snapshot_id"], "snapshot.reference.1")
+
+                with urlopen(f"{base}/v1/projects/reference.provider/impact") as response:
+                    impact_view = json.loads(response.read())
+                self.assertEqual(len(impact_view["source_of_truth"]), 1)
+
+                policy_request = {
+                    "policy": {"policy_id": "policy.http", "mode": "enforced", "required_checks": ["tests"]},
+                    "checks": [{"check_id": "tests", "status": "fail"}],
+                }
+                policy_request = Request(
+                    f"{base}/v1/policies/evaluate",
+                    data=json.dumps(policy_request).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-AINE-Actor": "agent.codex"},
+                    method="POST",
+                )
+                with self.assertRaises(HTTPError) as raised:
+                    urlopen(policy_request)
+                self.assertEqual(raised.exception.code, 409)
+                decision = json.loads(raised.exception.read())
+                self.assertTrue(decision["blocked"])
+
+                authorization_request = Request(
+                    f"{base}/v1/authorization/evaluate",
+                    data=json.dumps({
+                        "subject": {"subject_id": "agent.codex", "roles": ["developer"]},
+                        "action": "read",
+                        "resource": "portfolio/reference",
+                    }).encode("utf-8"),
+                    headers={"Content-Type": "application/json", "X-AINE-Actor": "agent.codex"},
+                    method="POST",
+                )
+                with urlopen(authorization_request) as response:
+                    authorization = json.loads(response.read())
+                self.assertEqual(authorization["status"], "allow")
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+
+
+if __name__ == "__main__":
+    unittest.main()

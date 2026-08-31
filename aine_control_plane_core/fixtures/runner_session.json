@@ -1,0 +1,19 @@
+{
+  "schema": "aine.control-plane.runner-session.v1",
+  "session_id": "runner.session.fixture",
+  "revision": 1,
+  "status": "requested",
+  "execution_id": "execution.remediation.fixture",
+  "plan_id": "remediation.plan.fixture",
+  "runner_kind": "local_runner",
+  "operation_profile": "dry_run_patch",
+  "correlation_id": "corr.runner.fixture",
+  "project_ids": ["reference.consumer"],
+  "patch_artifact_ids": [],
+  "validation_report_ids": [],
+  "evidence_ids": ["evidence.fixture"],
+  "requested_by": "fixture",
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "mutation_scope": {"source_repositories": false, "git": false, "deployment": false},
+  "read_only": true
+}

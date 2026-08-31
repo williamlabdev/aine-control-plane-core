@@ -1,0 +1,19 @@
+{
+  "schema": "aine.control-plane.validation-report.v1",
+  "report_id": "validation.report.fixture",
+  "revision": 1,
+  "status": "unknown",
+  "session_id": "runner.session.fixture",
+  "execution_id": "execution.remediation.fixture",
+  "plan_id": "remediation.plan.fixture",
+  "correlation_id": "corr.runner.fixture",
+  "summary": "The external runner did not observe the security check.",
+  "checks": [{"check_id": "registry.validate", "status": "pass", "summary": "Portable snapshot validation passed.", "evidence_ids": ["evidence.fixture"]}],
+  "missing_check_ids": ["preflight"],
+  "evidence_ids": ["evidence.fixture"],
+  "runner_kind": "local_runner",
+  "reported_by": "fixture",
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "mutation_scope": {"source_repositories": false, "git": false, "deployment": false},
+  "read_only": true
+}

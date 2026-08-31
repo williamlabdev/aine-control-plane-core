@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/remediation-plan.v1.schema.json",
+  "title": "AINE Control Plane Remediation Plan v1",
+  "type": "object",
+  "required": ["schema", "plan_id", "revision", "status", "title", "rationale", "finding", "scope", "strategy", "validation", "acceptance_criteria", "evidence_ids", "requested_by", "owner", "risk", "approval_required", "created_at", "read_only"],
+  "allOf": [
+    {
+      "if": {"properties": {"approval_required": {"const": false}}, "required": ["approval_required"]},
+      "then": {"properties": {"risk": {"const": "low"}}}
+    }
+  ],
+  "properties": {
+    "schema": {"const": "aine.control-plane.remediation-plan.v1"},
+    "plan_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["draft", "submitted", "approved", "rejected", "closed"]},
+    "title": {"type": "string", "minLength": 1},
+    "rationale": {"type": "string", "minLength": 1},
+    "finding": {"type": "object", "required": ["summary"], "properties": {"finding_id": {"type": "string"}, "severity": {"type": "string"}, "summary": {"type": "string", "minLength": 1}}},
+    "scope": {"type": "object"},
+    "strategy": {"type": "object", "required": ["description"], "properties": {"kind": {"type": "string"}, "description": {"type": "string", "minLength": 1}}},
+    "validation": {"type": "object", "required": ["required_checks"], "properties": {"required_checks": {"type": "array", "items": {"type": "string"}}}},
+    "acceptance_criteria": {"type": "array", "items": {"type": "string"}},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "requested_by": {"type": "string", "minLength": 1},
+    "owner": {"type": "string", "minLength": 1},
+    "risk": {"enum": ["low", "medium", "high", "critical"]},
+    "approval_required": {"type": "boolean"},
+    "created_at": {"type": "string", "minLength": 1},
+    "submitted_at": {"type": "string"},
+    "previous_revision": {"type": "integer", "minimum": 1},
+    "approval_id": {"type": "string"},
+    "read_only": {"const": true}
+  }
+}

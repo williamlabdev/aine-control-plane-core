@@ -3,7 +3,7 @@
   "$id": "https://aine.dev/schemas/control-plane/impact-report.v1.schema.json",
   "title": "AINE Control Plane Impact Report v1",
   "type": "object",
-  "required": ["schema", "project_id", "affected_projects", "relationships", "read_only"],
+  "required": ["schema", "project_id", "affected_projects", "relationships", "source_of_truth", "read_only"],
   "properties": {
     "schema": {"const": "aine.control-plane.impact-report.v1"},
     "project_id": {"type": "string"},

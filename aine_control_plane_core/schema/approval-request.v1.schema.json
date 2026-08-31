@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/approval-request.v1.schema.json",
+  "title": "AINE Control Plane Approval Request v1",
+  "type": "object",
+  "required": ["schema", "approval_id", "subject", "scope", "requested_by", "required_approvals", "requested_at"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.approval-request.v1"},
+    "approval_id": {"type": "string"},
+    "subject": {"type": "object"},
+    "scope": {"type": "object"},
+    "requested_by": {"type": "string"},
+    "required_approvals": {"type": "integer", "minimum": 1},
+    "required_roles": {"type": "array", "items": {"type": "string"}},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "expires_at": {"type": ["string", "null"]},
+    "requested_at": {"type": "string"},
+    "status": {"enum": ["pending", "approved", "rejected", "expired"]},
+    "decisions": {"type": "array"}
+  }
+}

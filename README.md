@@ -16,6 +16,8 @@ or a provider integration product.
 - advisory or opt-in enforced policy evaluation, including unknown and conflict states;
 - deterministic RBAC/ABAC authorization evaluation;
 - retention evaluation without deletion;
+- approval, change-request, remediation-plan, and runner-session record workflows (read-only proposals; every decision is an explicit record);
+- a reference self-hosted HTTP transport and a local React UI over the same read-only boundary;
 - JSONL, SQLite, static-fixture, and airt chain-projection reference adapters;
 - snapshot-backed `integration-observation.v1` records for report-only Orvena/airt evidence;
 - JSON Schemas, fixtures, and conformance tests for the public boundary.
@@ -35,7 +37,7 @@ observations, and `read_only` is always true.
 ## What is intentionally excluded
 
 - hosted SaaS, tenant administration, billing, and commercial operations;
-- UI, HTTP authentication, session management, and network exposure;
+- HTTP authentication, session management, and hardened network exposure (the reference transport binds locally and is for local or demo use);
 - provider SDKs, credentials, secret-manager resolution, and external identity integrations;
 - source-repository mutation, Git operations, deployment execution, and agent execution;
 - customer-specific business logic and private portfolio data.
@@ -59,6 +61,19 @@ decision = evaluate_policy(
 )
 assert decision["status"] == "pass"
 ```
+
+To see the whole surface at once, run the reference server and the UI:
+
+```bash
+PYTHONPATH=. python3 examples/run_server.py --db ./control-plane.sqlite
+# in another terminal
+cd ui && npm install && npm run dev
+```
+
+The UI reads `VITE_API_BASE_URL` (default empty, same origin; point it at
+`http://127.0.0.1:8787` for the example server) and shows projects,
+relationships, source-of-truth rules, impact, evidence, audit events, and the
+change-request/remediation/runner workflows.
 
 The reference adapters are intentionally explicit about their runtime
 destination:

@@ -17,3 +17,6 @@ build/
 # Its layer/line taxonomy and decision notes come from the private portfolio
 # documents, so publishing it publishes those. Kept in the working tree.
 /manifest.yaml
+ui/node_modules/
+ui/dist/
+ui/.vite/

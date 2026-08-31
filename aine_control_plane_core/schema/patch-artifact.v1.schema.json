@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/patch-artifact.v1.schema.json",
+  "title": "AINE Control Plane Patch Artifact v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "patch_id", "revision", "status", "session_id", "execution_id", "plan_id", "format", "content_digest", "files", "file_count", "change_summary", "evidence_ids", "reported_by", "created_at", "mutation_scope", "read_only"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.patch-artifact.v1"},
+    "patch_id": {"type": "string", "minLength": 1},
+    "revision": {"type": "integer", "minimum": 1},
+    "status": {"const": "proposed"},
+    "session_id": {"type": "string", "minLength": 1},
+    "execution_id": {"type": "string", "minLength": 1},
+    "plan_id": {"type": "string", "minLength": 1},
+    "correlation_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"},
+    "format": {"enum": ["unified_diff", "git_patch", "file_manifest", "agent_patch"]},
+    "content_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "string",
+      "allOf": [
+        {"pattern": "^[A-Za-z][A-Za-z0-9+.-]*:[^\\s]+$"},
+        {"not": {"pattern": "^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]*@"}},
+        {"not": {"pattern": "[?#]"}},
+        {"not": {"pattern": "^[Ff][Ii][Ll][Ee]:"}}
+      ]
+    },
+    "base_revisions": {"type": "array", "items": {"type": "object"}},
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "change"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!~)(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]*:)(?!.*(^|[/\\\\])\\.\\.([/\\\\]|$)).+$"},
+          "old_path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!~)(?![A-Za-z]:)(?![A-Za-z][A-Za-z0-9+.-]*:)(?!.*(^|[/\\\\])\\.\\.([/\\\\]|$)).+$"},
+          "change": {"enum": ["added", "modified", "deleted", "renamed"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "file_count": {"type": "integer", "minimum": 1},
+    "change_summary": {"type": "string", "minLength": 1},
+    "evidence_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "reported_by": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "mutation_scope": {
+      "type": "object",
+      "required": ["source_repositories", "git", "deployment"],
+      "properties": {
+        "source_repositories": {"const": false},
+        "git": {"const": false},
+        "deployment": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "read_only": {"const": true}
+  }
+}

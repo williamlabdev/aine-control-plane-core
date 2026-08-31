@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aine.dev/schemas/control-plane/approval-decision.v1.schema.json",
+  "title": "AINE Control Plane Approval Decision v1",
+  "type": "object",
+  "required": ["schema", "decision_id", "approval_id", "actor_id", "decision", "decided_at"],
+  "properties": {
+    "schema": {"const": "aine.control-plane.approval-decision.v1"},
+    "decision_id": {"type": "string"},
+    "approval_id": {"type": "string"},
+    "actor_id": {"type": "string"},
+    "decision": {"enum": ["approve", "reject"]},
+    "reason": {"type": "string"},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "decided_at": {"type": "string"}
+  }
+}

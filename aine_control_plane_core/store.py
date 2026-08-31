@@ -127,7 +127,14 @@ class LocalRecordStore:
                 error_code="read_only_context_required",
                 reasons=("Control Plane core context must be read_only",),
             )
-        record_errors = validate_record(record)
+        record_errors = [
+            error
+            for error in validate_record(record)
+            # Portable identity is enforced below via _portable_record_id /
+            # the explicit record_id parameter; private record types (e.g.
+            # change requests, runner sessions) carry other identity fields.
+            if error != "record must contain a portable identity"
+        ]
         if record_errors:
             return _outcome(
                 operation="put",

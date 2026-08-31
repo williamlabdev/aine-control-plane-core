@@ -34,9 +34,11 @@ flowchart LR
 
 ## Deliberate non-goals
 
-The public core does not include UI, HTTP serving, authentication, GitHub
-integration, secret resolution, deployment, source editing, agent execution,
-approval workflow orchestration, or hosted multi-tenant state. Those are
+The public core does not include authentication, GitHub integration, secret
+resolution, deployment, source editing, agent execution, or hosted
+multi-tenant state. The reference HTTP transport and UI it does include stay
+inside the same read-only record boundary and bind locally; hardening them for
+network exposure is an application concern. Those are
 application and adapter concerns and must establish their own trust boundary.
 File-backed reference adapters have no source-repository handle, but callers
 must configure their destinations outside scanned repositories.

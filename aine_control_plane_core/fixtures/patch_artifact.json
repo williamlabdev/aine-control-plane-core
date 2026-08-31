@@ -1,0 +1,22 @@
+{
+  "schema": "aine.control-plane.patch-artifact.v1",
+  "patch_id": "patch.artifact.fixture",
+  "revision": 1,
+  "status": "proposed",
+  "session_id": "runner.session.fixture",
+  "execution_id": "execution.remediation.fixture",
+  "plan_id": "remediation.plan.fixture",
+  "correlation_id": "corr.runner.fixture",
+  "format": "file_manifest",
+  "content_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artifact_ref": "urn:aine:patch:fixture",
+  "base_revisions": [{"project_id": "reference.consumer", "commit": "abc123"}],
+  "files": [{"path": "service/api.yaml", "change": "modified"}],
+  "file_count": 1,
+  "change_summary": "Proposed API relationship evidence update.",
+  "evidence_ids": ["evidence.fixture"],
+  "reported_by": "fixture",
+  "created_at": "2026-01-01T00:00:00+00:00",
+  "mutation_scope": {"source_repositories": false, "git": false, "deployment": false},
+  "read_only": true
+}
