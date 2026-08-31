@@ -1,6 +1,6 @@
 # AINE Control Plane UI
 
-Private React + Tailwind dashboard for the self-hosted Control Plane.
+Local React + Tailwind dashboard for the self-hosted Control Plane.
 
 The UI keeps scanned repositories read-only. It consumes the existing
 loopback API, does not scan repositories, access SQLite directly, execute
@@ -43,15 +43,32 @@ fallback, which npm correctly skips on macOS arm64. The platform-native
 Tailwind package remains installed and the UI build does not require the
 WASI-only subtree.
 
-Start the Control Plane separately on `127.0.0.1:8787`. Vite proxies
-`/healthz` and `/v1` to that service. Set `AINE_API_TARGET` when the API runs
-on another local address.
+Start the Control Plane separately on `127.0.0.1:8787` (from the repository
+root: `PYTHONPATH=. python3 examples/run_server.py --db ./control-plane.sqlite`).
+Vite proxies `/healthz` and `/v1` to that service — leave `VITE_API_BASE_URL`
+unset for local development. Set `AINE_API_TARGET` when the API runs on
+another local address.
+
+A fresh database renders every view empty. Seed it with the bundled example
+snapshot so the Projects/Relationships/Source-of-truth views have data:
+
+```bash
+curl -X POST http://127.0.0.1:8787/v1/snapshots \
+  -H "Content-Type: application/json" -H "X-AINE-Actor: developer" \
+  --data @aine_control_plane/fixtures/registry_snapshot.json
+```
 
 The production build can target a separately hosted Control Plane with:
 
 ```bash
 VITE_API_BASE_URL=https://control-plane.example.test npm run build
 ```
+
+A build served from a different origin than the API is cross-origin, and the
+reference server rejects cross-origin browser requests by default. Opt in by
+starting it with `--cors-origin` set to the UI's exact origin (or pass
+`cors_origin=` to `serve()`); this names one origin and is not a substitute
+for a real authentication and TLS boundary.
 
 The frontend does not provide authentication. A non-loopback deployment must
 place it behind the Control Plane's authentication and authorization boundary.
@@ -64,14 +81,6 @@ evidence, not a replacement for TLS, identity, secret management, or a
 provider-specific security scanner.
 
 ### Dependency security checks
-
-From the repository root, install the external scanners once and run the
-repository security gate:
-
-```bash
-brew install gitleaks osv-scanner
-./tools/security_scan.sh
-```
 
 The UI keeps `package-lock.json` as its canonical lockfile. Run the npm-only
 check from this directory with:

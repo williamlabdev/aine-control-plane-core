@@ -401,12 +401,30 @@ class _Handler(BaseHTTPRequestHandler):
             return None
         return value
 
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        if not self.server.cors_origin:
+            self.send_error(501, "Unsupported method ('OPTIONS')")
+            return
+        self.send_response(204)
+        self._send_cors_headers()
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-AINE-Actor")
+        self.send_header("Access-Control-Max-Age", "86400")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def _send_cors_headers(self) -> None:
+        if self.server.cors_origin:
+            self.send_header("Access-Control-Allow-Origin", self.server.cors_origin)
+            self.send_header("Vary", "Origin")
+
     def _respond(self, status: int, value: Any) -> None:
         body = _json_bytes(value)
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -418,16 +436,36 @@ class _Handler(BaseHTTPRequestHandler):
 class ControlPlaneHTTPServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
-    def __init__(self, address: tuple[str, int], service: ControlPlaneService, log_requests: bool = False) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        service: ControlPlaneService,
+        log_requests: bool = False,
+        cors_origin: str | None = None,
+    ) -> None:
         super().__init__(address, _Handler)
         self.service = service
         self.log_requests = log_requests
+        self.cors_origin = cors_origin
 
 
-def serve(service: ControlPlaneService, host: str = "127.0.0.1", port: int = 8787, log_requests: bool = False) -> None:
-    """Run the reference self-hosted HTTP transport until interrupted."""
+def serve(
+    service: ControlPlaneService,
+    host: str = "127.0.0.1",
+    port: int = 8787,
+    log_requests: bool = False,
+    cors_origin: str | None = None,
+) -> None:
+    """Run the reference self-hosted HTTP transport until interrupted.
 
-    server = ControlPlaneHTTPServer((host, port), service, log_requests=log_requests)
+    ``cors_origin`` opts in to cross-origin browser access for exactly one
+    origin (e.g. a UI build served from another port). Off by default: the
+    reference transport stays same-origin/loopback unless the operator names
+    the origin explicitly. It is not a substitute for the authentication,
+    TLS, and authorization boundary a non-loopback deployment requires.
+    """
+
+    server = ControlPlaneHTTPServer((host, port), service, log_requests=log_requests, cors_origin=cors_origin)
     try:
         server.serve_forever()
     finally:

@@ -62,18 +62,28 @@ decision = evaluate_policy(
 assert decision["status"] == "pass"
 ```
 
-To see the whole surface at once, run the reference server and the UI:
+To see the whole surface at once, run the reference server, seed it with the
+bundled example snapshot, and start the UI:
 
 ```bash
+# terminal 1 — the reference server
 PYTHONPATH=. python3 examples/run_server.py --db ./control-plane.sqlite
-# in another terminal
-cd ui && npm install && npm run dev
+
+# terminal 2 — seed one Registry snapshot so the views have data
+curl -X POST http://127.0.0.1:8787/v1/snapshots \
+  -H "Content-Type: application/json" -H "X-AINE-Actor: developer" \
+  --data @aine_control_plane/fixtures/registry_snapshot.json
+
+# terminal 2 — the UI (Vite proxies /v1 to the server; leave VITE_API_BASE_URL unset)
+cd ui && npm ci --include=optional --ignore-scripts && npm run dev
 ```
 
-The UI reads `VITE_API_BASE_URL` (default empty, same origin; point it at
-`http://127.0.0.1:8787` for the example server) and shows projects,
-relationships, source-of-truth rules, impact, evidence, audit events, and the
-change-request/remediation/runner workflows.
+The UI shows projects, relationships, source-of-truth rules, impact,
+evidence, audit events, and the change-request/remediation/runner workflows.
+For local development the Vite dev server proxies API calls, so no
+cross-origin setup is needed. To serve a production UI build from a different
+origin, start the server with `--cors-origin <ui-origin>` and build the UI
+with `VITE_API_BASE_URL` pointing at the server (see `ui/README.md`).
 
 The reference adapters are intentionally explicit about their runtime
 destination:

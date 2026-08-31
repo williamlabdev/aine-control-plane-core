@@ -432,3 +432,43 @@ class V1CoreTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CorsOptInTest(unittest.TestCase):
+    def _spawn(self, **kwargs):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        store = LocalRecordStore(Path(directory.name) / "control-plane.sqlite")
+        server = ControlPlaneHTTPServer(("127.0.0.1", 0), ControlPlaneService(store), **kwargs)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        return f"http://127.0.0.1:{server.server_address[1]}"
+
+    def test_cors_stays_off_by_default(self):
+        base = self._spawn()
+        with urlopen(f"{base}/v1/projects") as response:
+            self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
+        with self.assertRaises(HTTPError) as raised:
+            urlopen(Request(f"{base}/v1/projects", method="OPTIONS"))
+        self.assertEqual(raised.exception.code, 501)
+
+    def test_cors_opt_in_names_exactly_one_origin(self):
+        base = self._spawn(cors_origin="http://localhost:4173")
+        with urlopen(f"{base}/v1/projects") as response:
+            self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:4173")
+            self.assertEqual(response.headers.get("Vary"), "Origin")
+        preflight = Request(
+            f"{base}/v1/projects",
+            method="OPTIONS",
+            headers={
+                "Origin": "http://localhost:4173",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type, x-aine-actor",
+            },
+        )
+        with urlopen(preflight) as response:
+            self.assertEqual(response.status, 204)
+            self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:4173")
+            self.assertEqual(response.headers.get("Access-Control-Allow-Methods"), "GET, POST, OPTIONS")
+            self.assertEqual(response.headers.get("Access-Control-Allow-Headers"), "Content-Type, X-AINE-Actor")
