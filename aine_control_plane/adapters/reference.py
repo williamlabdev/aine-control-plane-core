@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from aine_control_plane_core.config import AdapterConfig
-from aine_control_plane_core.contracts import AdapterContext, AdapterError, AdapterMetadata
-from aine_control_plane_core.integration import build_integration_observation
-from aine_control_plane_core.outcomes import AdapterOutcome
-from aine_control_plane_core.validation import canonical_digest, validate_context, validate_record
+from aine_control_plane.config import AdapterConfig
+from aine_control_plane.contracts import AdapterContext, AdapterError, AdapterMetadata
+from aine_control_plane.integration import build_integration_observation
+from aine_control_plane.outcomes import AdapterOutcome
+from aine_control_plane.validation import canonical_digest, validate_context, validate_record
 
 
 AIRT_CHAIN_PROJECTION_SCHEMA = "aine.control-plane.airt-chain-projection.v1"

@@ -50,8 +50,8 @@ callers must keep that destination outside scanned source repositories.
 ## Quick start
 
 ```python
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.governance import evaluate_policy
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.governance import evaluate_policy
 
 context = AdapterContext("request-1", actor={"id": "developer"})
 decision = evaluate_policy(
@@ -81,7 +81,7 @@ destination:
 ```python
 from pathlib import Path
 
-from aine_control_plane_core.adapters import JsonlEvidenceSinkAdapter
+from aine_control_plane.adapters import JsonlEvidenceSinkAdapter
 
 sink = JsonlEvidenceSinkAdapter(Path("evidence.jsonl"))
 ```
@@ -97,7 +97,7 @@ does not declare. It keeps only chain-level fields, lists what it dropped, and
 asserts no chain verification it did not perform.
 
 ```python
-from aine_control_plane_core.adapters import AirtChainProjectionAdapter
+from aine_control_plane.adapters import AirtChainProjectionAdapter
 
 outcome = AirtChainProjectionAdapter().collect(
     {"run": run, "snapshot_id": snapshot_id},
@@ -112,7 +112,7 @@ The project has no runtime dependencies.
 
 ```bash
 python -m unittest discover -s tests -p 'test_*.py'
-python -m compileall -q aine_control_plane_core tests
+python -m compileall -q aine_control_plane tests
 PYTHONPATH=. python examples/policy_evaluation.py
 ```
 

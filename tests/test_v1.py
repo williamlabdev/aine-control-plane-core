@@ -9,18 +9,18 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from aine_control_plane_core.approval import ApprovalWorkflow
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.governance import authorize, evaluate_policy
-from aine_control_plane_core.portfolio import PortfolioRegistry, validate_snapshot
-from aine_control_plane_core.retention import evaluate_store_retention
-from aine_control_plane_core.server import ControlPlaneHTTPServer
-from aine_control_plane_core.service import ControlPlaneService
-from aine_control_plane_core.store import LocalRecordStore
-from aine_control_plane_core.validation import validate_authorization_decision, validate_outcome, validate_policy_decision
+from aine_control_plane.approval import ApprovalWorkflow
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.governance import authorize, evaluate_policy
+from aine_control_plane.portfolio import PortfolioRegistry, validate_snapshot
+from aine_control_plane.retention import evaluate_store_retention
+from aine_control_plane.server import ControlPlaneHTTPServer
+from aine_control_plane.service import ControlPlaneService
+from aine_control_plane.store import LocalRecordStore
+from aine_control_plane.validation import validate_authorization_decision, validate_outcome, validate_policy_decision
 
 
-FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane" / "fixtures"
 
 
 class V1CoreTests(unittest.TestCase):

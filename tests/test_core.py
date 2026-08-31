@@ -6,19 +6,19 @@ import unittest
 from datetime import datetime, timezone
 from pathlib import Path
 
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.governance import authorize, evaluate_policy
-from aine_control_plane_core.portfolio import PortfolioRegistry
-from aine_control_plane_core.retention import evaluate_store_retention
-from aine_control_plane_core.store import LocalRecordStore
-from aine_control_plane_core.validation import (
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.governance import authorize, evaluate_policy
+from aine_control_plane.portfolio import PortfolioRegistry
+from aine_control_plane.retention import evaluate_store_retention
+from aine_control_plane.store import LocalRecordStore
+from aine_control_plane.validation import (
     validate_authorization_decision,
     validate_policy_decision,
     validate_record,
 )
 
 
-FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane" / "fixtures"
 
 
 class PublicCoreTests(unittest.TestCase):

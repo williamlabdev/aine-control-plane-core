@@ -9,7 +9,7 @@ Before opening a change:
 2. add or update a JSON Schema and fixture for every new portable field or relationship;
 3. add a regression or conformance test for every new behavior;
 4. verify that tests, examples, and documentation contain no secrets, customer data, or machine-local paths;
-5. run `python -m unittest discover -s tests -p 'test_*.py'` and `python -m compileall -q aine_control_plane_core tests`.
+5. run `python -m unittest discover -s tests -p 'test_*.py'` and `python -m compileall -q aine_control_plane tests`.
 
 `tests/test_portfolio_chain_e2e.py` walks the whole correlated chain — a live
 producer run becomes an observation, the observation joins a stored portfolio

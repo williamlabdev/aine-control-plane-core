@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Mapping, Any
 
-from aine_control_plane_core.config import AdapterConfig
-from aine_control_plane_core.contracts import AdapterContext, AdapterError, AdapterMetadata
-from aine_control_plane_core.store import LocalRecordStore
-from aine_control_plane_core.validation import validate_context
+from aine_control_plane.config import AdapterConfig
+from aine_control_plane.contracts import AdapterContext, AdapterError, AdapterMetadata
+from aine_control_plane.store import LocalRecordStore
+from aine_control_plane.validation import validate_context
 
 
 class SQLiteEvidenceSinkAdapter:

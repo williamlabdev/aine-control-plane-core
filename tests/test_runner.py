@@ -8,9 +8,9 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.validation import validate_outcome
-from aine_control_plane_core.runner import (
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.validation import validate_outcome
+from aine_control_plane.runner import (
     PATCH_ARTIFACT_SCHEMA,
     RUNNER_SESSION_SCHEMA,
     VALIDATION_REPORT_SCHEMA,
@@ -18,12 +18,12 @@ from aine_control_plane_core.runner import (
     validate_runner_session,
     validate_validation_report,
 )
-from aine_control_plane_core.service import ControlPlaneService
-from aine_control_plane_core.server import ControlPlaneHTTPServer
-from aine_control_plane_core.store import LocalRecordStore
+from aine_control_plane.service import ControlPlaneService
+from aine_control_plane.server import ControlPlaneHTTPServer
+from aine_control_plane.store import LocalRecordStore
 
 
-FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane" / "fixtures"
 
 
 class RunnerWorkflowTests(unittest.TestCase):

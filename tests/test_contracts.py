@@ -5,10 +5,10 @@ import re
 import unittest
 from pathlib import Path
 
-from aine_control_plane_core.config import AdapterConfig
-from aine_control_plane_core.contracts import AdapterContext, AdapterMetadata, CONTRACT_VERSION
-from aine_control_plane_core.outcomes import AdapterOutcome
-from aine_control_plane_core.validation import (
+from aine_control_plane.config import AdapterConfig
+from aine_control_plane.contracts import AdapterContext, AdapterMetadata, CONTRACT_VERSION
+from aine_control_plane.outcomes import AdapterOutcome
+from aine_control_plane.validation import (
     canonical_digest,
     validate_adapter_config,
     validate_adapter_metadata,
@@ -159,7 +159,7 @@ class ControlPlaneContractTests(unittest.TestCase):
         self.assertTrue(validate_record(record_with_path))
 
     def test_schema_key_guard_matches_runtime_key_examples(self):
-        schema_path = Path(__file__).parents[1] / "aine_control_plane_core" / "schema" / "adapter-config.v1.schema.json"
+        schema_path = Path(__file__).parents[1] / "aine_control_plane" / "schema" / "adapter-config.v1.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         patterns = tuple(
             item["not"]["pattern"]

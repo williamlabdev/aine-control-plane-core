@@ -1,5 +1,5 @@
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.governance import evaluate_policy
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.governance import evaluate_policy
 
 
 decision = evaluate_policy(

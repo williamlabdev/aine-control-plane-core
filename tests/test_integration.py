@@ -4,15 +4,15 @@ import json
 import unittest
 from pathlib import Path
 
-from aine_control_plane_core.integration import (
+from aine_control_plane.integration import (
     INTEGRATION_OBSERVATION_SCHEMA,
     build_integration_observation,
     validate_integration_observation,
 )
-from aine_control_plane_core.validation import validate_record
+from aine_control_plane.validation import validate_record
 
 
-FIXTURE = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures" / "integration_observation.json"
+FIXTURE = Path(__file__).parents[1] / "aine_control_plane" / "fixtures" / "integration_observation.json"
 
 
 class IntegrationObservationTests(unittest.TestCase):

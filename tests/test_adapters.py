@@ -5,14 +5,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from aine_control_plane_core.adapters import (
+from aine_control_plane.adapters import (
     AIRT_CHAIN_PROJECTION_SCHEMA,
     AirtChainProjectionAdapter,
     JsonlEvidenceSinkAdapter,
     StaticIdentityAdapter,
 )
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.validation import (
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.validation import (
     validate_adapter_config,
     validate_adapter_metadata,
     validate_outcome,
@@ -20,7 +20,7 @@ from aine_control_plane_core.validation import (
 )
 
 
-FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane" / "fixtures"
 
 
 class ReferenceAdapterTests(unittest.TestCase):

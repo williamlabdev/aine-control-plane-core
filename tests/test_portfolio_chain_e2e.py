@@ -31,8 +31,8 @@ import unittest
 from pathlib import Path
 from urllib.request import urlopen
 
-from aine_control_plane_core.adapters import AirtChainProjectionAdapter
-from aine_control_plane_core.contracts import AdapterContext
+from aine_control_plane.adapters import AirtChainProjectionAdapter
+from aine_control_plane.contracts import AdapterContext
 
 # One portfolio review is one correlation. airt records its own session
 # identifier per run; that is airt's identity, not the portfolio's, so the

@@ -8,11 +8,11 @@ from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from aine_control_plane_core.change_requests import CHANGE_REQUEST_SCHEMA, validate_change_request
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.server import ControlPlaneHTTPServer
-from aine_control_plane_core.service import ControlPlaneService
-from aine_control_plane_core.store import LocalRecordStore
+from aine_control_plane.change_requests import CHANGE_REQUEST_SCHEMA, validate_change_request
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.server import ControlPlaneHTTPServer
+from aine_control_plane.service import ControlPlaneService
+from aine_control_plane.store import LocalRecordStore
 
 
 class ChangeRequestWorkflowTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class ChangeRequestWorkflowTests(unittest.TestCase):
             actor={"id": "agent.codex", "roles": ["developer"], "teams": ["platform"]},
         )
 
-    def test_create_is_aine_control_plane_core_owned_append_only_draft(self):
+    def test_create_is_aine_control_plane_owned_append_only_draft(self):
         with tempfile.TemporaryDirectory() as directory:
             store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
             service = ControlPlaneService(store)
@@ -141,7 +141,7 @@ class ChangeRequestWorkflowTests(unittest.TestCase):
             self.assertNotIn("approval", submitted["result"])
 
     def test_change_request_schema_declares_read_only_proposal_boundary(self):
-        schema_path = Path(__file__).parents[1] / "aine_control_plane_core" / "schema" / "change-request.v1.schema.json"
+        schema_path = Path(__file__).parents[1] / "aine_control_plane" / "schema" / "change-request.v1.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         self.assertEqual(schema["properties"]["schema"]["const"], CHANGE_REQUEST_SCHEMA)
         self.assertEqual(schema["properties"]["read_only"]["const"], True)

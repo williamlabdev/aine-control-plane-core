@@ -2,7 +2,7 @@
 
 ## Position
 
-`aine-control-plane-core` sits between portable artifacts produced by
+`aine-control-plane` sits between portable artifacts produced by
 `aine-registry` and an application-specific control plane. It defines data and
 decision contracts, but it does not own a hosted application or a repository.
 

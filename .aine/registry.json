@@ -1,33 +1,33 @@
 {
   "project": {
-    "id": "aine.aine-control-plane-core",
+    "id": "aine.aine-control-plane",
     "owner": "william",
     "ownership": {"team": "aine-governance", "owners": ["william"], "delegates": []},
-    "kind": "control_plane_core_contracts",
+    "kind": "control_plane_contracts",
     "capabilities": ["portable_contracts", "outcome_semantics", "evidence_records", "relationship_queries", "policy_validation", "retention", "integration_observation_contracts"],
-    "risk": {"default": "high", "high_risk_paths": ["aine_control_plane_core/contracts.py", "aine_control_plane_core/portfolio.py", "aine_control_plane_core/validation.py", "aine_control_plane_core/integration.py", "README.md"]},
+    "risk": {"default": "high", "high_risk_paths": ["aine_control_plane/contracts.py", "aine_control_plane/portfolio.py", "aine_control_plane/validation.py", "aine_control_plane/integration.py", "README.md"]},
     "approval_required": true,
     "policy": {"mode": "advisory", "require_approval_for": ["high", "schema", "contract"], "deny_unknown_changes": false, "required_checks": ["test", "verify"]},
     "commands": {
       "test": {"command": "python3 -m unittest discover -s tests -p 'test_*.py' -q", "evidence": "tests/"},
-      "verify": {"command": "python3 -m compileall -q aine_control_plane_core", "evidence": "aine_control_plane_core/"}
+      "verify": {"command": "python3 -m compileall -q aine_control_plane", "evidence": "aine_control_plane/"}
     }
   },
   "artifacts": [
-    {"id": "control-plane-core-project-manifest", "path": ".aine/registry.json", "kind": "project_manifest", "role": "config", "status": "present", "risk": "high", "approval_required": true},
-    {"id": "control-plane-core-readme", "path": "README.md", "kind": "product_boundary", "role": "source", "source_of_truth": "control_plane.core_boundary", "status": "present", "risk": "high", "approval_required": true},
-    {"id": "control-plane-core-architecture", "path": "docs/ARCHITECTURE.md", "kind": "architecture", "role": "source", "source_of_truth": "control_plane.core_architecture", "status": "present", "risk": "high", "approval_required": true},
-    {"id": "control-plane-core-contracts", "path": "aine_control_plane_core/contracts.py", "kind": "contracts", "role": "source", "source_of_truth": "control_plane.core_contract", "status": "present", "risk": "critical", "approval_required": true},
-    {"id": "control-plane-core-outcomes", "path": "aine_control_plane_core/outcomes.py", "kind": "outcome_semantics", "role": "source", "status": "present", "risk": "high", "approval_required": true},
-    {"id": "control-plane-core-integration", "path": "aine_control_plane_core/integration.py", "kind": "integration_contract", "role": "schema", "source_of_truth": "control_plane.core_integration_contract", "status": "present", "risk": "critical", "approval_required": true},
-    {"id": "control-plane-core-integration-fixture", "path": "aine_control_plane_core/fixtures/integration_observation.json", "kind": "integration_fixture", "role": "test", "status": "present", "risk": "high", "approval_required": true}
+    {"id": "control-plane-project-manifest", "path": ".aine/registry.json", "kind": "project_manifest", "role": "config", "status": "present", "risk": "high", "approval_required": true},
+    {"id": "control-plane-readme", "path": "README.md", "kind": "product_boundary", "role": "source", "source_of_truth": "control_plane.core_boundary", "status": "present", "risk": "high", "approval_required": true},
+    {"id": "control-plane-architecture", "path": "docs/ARCHITECTURE.md", "kind": "architecture", "role": "source", "source_of_truth": "control_plane.core_architecture", "status": "present", "risk": "high", "approval_required": true},
+    {"id": "control-plane-contracts", "path": "aine_control_plane/contracts.py", "kind": "contracts", "role": "source", "source_of_truth": "control_plane.core_contract", "status": "present", "risk": "critical", "approval_required": true},
+    {"id": "control-plane-outcomes", "path": "aine_control_plane/outcomes.py", "kind": "outcome_semantics", "role": "source", "status": "present", "risk": "high", "approval_required": true},
+    {"id": "control-plane-integration", "path": "aine_control_plane/integration.py", "kind": "integration_contract", "role": "schema", "source_of_truth": "control_plane.core_integration_contract", "status": "present", "risk": "critical", "approval_required": true},
+    {"id": "control-plane-integration-fixture", "path": "aine_control_plane/fixtures/integration_observation.json", "kind": "integration_fixture", "role": "test", "status": "present", "risk": "high", "approval_required": true}
   ],
   "relationships": [
     {"target": "aine.aine-registry", "relationship_type": "registry_snapshot_consumer", "kind": "governance", "strength": "required", "status": "planned"}
   ],
   "source_of_truth": [
-    {"domain": "control_plane.core_boundary", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-readme"}, "status": "declared"},
-    {"domain": "control_plane.core_architecture", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-architecture"}, "status": "declared"},
-    {"domain": "control_plane.core_contract", "authority": {"project_id": "aine.aine-control-plane-core", "artifact": "control-plane-core-contracts"}, "status": "declared"}
+    {"domain": "control_plane.core_boundary", "authority": {"project_id": "aine.aine-control-plane", "artifact": "control-plane-readme"}, "status": "declared"},
+    {"domain": "control_plane.core_architecture", "authority": {"project_id": "aine.aine-control-plane", "artifact": "control-plane-architecture"}, "status": "declared"},
+    {"domain": "control_plane.core_contract", "authority": {"project_id": "aine.aine-control-plane", "artifact": "control-plane-contracts"}, "status": "declared"}
   ]
 }

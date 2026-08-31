@@ -11,10 +11,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from aine_control_plane_core.adapters import StaticIdentityAdapter
-from aine_control_plane_core.server import serve
-from aine_control_plane_core.service import ControlPlaneService
-from aine_control_plane_core.store import LocalRecordStore
+from aine_control_plane.adapters import StaticIdentityAdapter
+from aine_control_plane.server import serve
+from aine_control_plane.service import ControlPlaneService
+from aine_control_plane.store import LocalRecordStore
 
 
 def main() -> None:

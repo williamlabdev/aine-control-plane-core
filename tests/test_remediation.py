@@ -7,20 +7,20 @@ import unittest
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-from aine_control_plane_core.contracts import AdapterContext
-from aine_control_plane_core.remediation import (
+from aine_control_plane.contracts import AdapterContext
+from aine_control_plane.remediation import (
     EXECUTION_REQUEST_SCHEMA,
     REMEDIATION_PLAN_SCHEMA,
     RemediationWorkflow,
     validate_execution_request,
     validate_remediation_plan,
 )
-from aine_control_plane_core.service import ControlPlaneService
-from aine_control_plane_core.server import ControlPlaneHTTPServer
-from aine_control_plane_core.store import LocalRecordStore
+from aine_control_plane.service import ControlPlaneService
+from aine_control_plane.server import ControlPlaneHTTPServer
+from aine_control_plane.store import LocalRecordStore
 
 
-FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane_core" / "fixtures"
+FIXTURE_DIR = Path(__file__).parents[1] / "aine_control_plane" / "fixtures"
 
 
 class RemediationWorkflowTests(unittest.TestCase):
