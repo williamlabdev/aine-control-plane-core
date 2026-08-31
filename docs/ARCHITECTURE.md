@@ -80,8 +80,9 @@ carried by a `success` outcome.
 
 ## Compatibility
 
-The package release version is independent from the wire identifiers; the
-current release is `0.2.0`. Portable contract identifiers remain
+The package release version is independent from the wire identifiers (the
+current release is recorded in `pyproject.toml`). Portable contract
+identifiers remain
 `aine.control-plane.*.v1`; consumers should pin and test the wire schemas
 independently from the Python package version.
 

@@ -50,7 +50,9 @@ unset for local development. Set `AINE_API_TARGET` when the API runs on
 another local address.
 
 A fresh database renders every view empty. Seed it with the bundled example
-snapshot so the Projects/Relationships/Source-of-truth views have data:
+snapshot so the Projects/Relationships/Source-of-truth views have data
+(run this from the repository root, not from `ui/` — the fixture path is
+relative to the root; re-running it is safe and reports `duplicate: true`):
 
 ```bash
 curl -X POST http://127.0.0.1:8787/v1/snapshots \

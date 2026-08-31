@@ -2,7 +2,8 @@
 
     PYTHONPATH=. python3 examples/run_server.py --db ./control-plane.sqlite
 
-Then, from ui/: `npm ci && npm run dev`, and open the printed URL. The Vite
+Then, from ui/: `npm ci --include=optional --ignore-scripts && npm run dev`,
+and open the printed URL. The Vite
 dev server proxies /v1 and /healthz to this server — do not set
 VITE_API_BASE_URL for local development. To serve a production UI build from
 a different origin instead, start this server with --cors-origin set to that
