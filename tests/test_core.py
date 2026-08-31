@@ -175,6 +175,58 @@ class PublicCoreTests(unittest.TestCase):
             }
             self.assertEqual(registry.ingest_snapshot(invalid_evidence, self.context)["status"], "failure")
 
+    def test_portfolio_merges_observations_across_snapshots(self):
+        with tempfile.TemporaryDirectory() as directory:
+            timestamps = iter(
+                (
+                    "2026-01-01T00:00:00+00:00",
+                    "2026-01-01T00:00:01+00:00",
+                    "2026-01-02T00:00:00+00:00",
+                    "2026-01-02T00:00:01+00:00",
+                )
+            )
+            store = LocalRecordStore(
+                Path(directory) / "portfolio.sqlite",
+                clock=lambda: next(timestamps, "2026-01-03T00:00:00+00:00"),
+            )
+            registry = PortfolioRegistry(store)
+            snapshot = json.loads((FIXTURE_DIR / "registry_semantics_snapshot.json").read_text(encoding="utf-8"))
+            self.assertEqual(registry.ingest_snapshot(snapshot, self.context)["status"], "success")
+            self.assertEqual(registry.snapshot_ids(), ["snapshot.polyrepo.semantic.1"])
+            self.assertTrue(
+                all(edge["observed_snapshot_id"] == "snapshot.polyrepo.semantic.1" for edge in registry.relationships())
+            )
+
+            updated = json.loads(json.dumps(snapshot))
+            updated["snapshot_id"] = "snapshot.polyrepo.semantic.2"
+            updated["dependencies"][0]["status"] = "active"
+            updated["dependencies"][0]["evidence"].append("content-tool/.aine/registry.v2.json")
+            updated["source_of_truth"][0]["authority"]["project_id"] = "core.web-app"
+            updated["source_of_truth"][0]["evidence"].append("web-app/.aine/registry.v2.json")
+            self.assertEqual(registry.ingest_snapshot(updated, self.context)["status"], "success")
+
+            merged = [edge for edge in registry.relationships() if edge.get("dependency_id") == "dep.polyrepo.cross-root"]
+            self.assertEqual(len(merged), 1)
+            self.assertEqual(merged[0]["observed_snapshot_id"], "snapshot.polyrepo.semantic.2")
+            self.assertEqual(merged[0]["status"], "active")
+            self.assertEqual(
+                merged[0]["evidence_refs"],
+                ["content-tool/.aine/registry.json", "content-tool/.aine/registry.v2.json"],
+            )
+
+            rules = registry.source_of_truth(domain="checkout.api")
+            self.assertEqual(len(rules), 1)
+            self.assertEqual(rules[0]["authority"]["project_id"], "core.web-app")
+            self.assertEqual(rules[0]["observed_snapshot_id"], "snapshot.polyrepo.semantic.2")
+            self.assertEqual(
+                rules[0]["evidence_refs"],
+                ["checkout-service/.aine/registry.json", "web-app/.aine/registry.v2.json"],
+            )
+            self.assertEqual(
+                registry.snapshot_ids(),
+                ["snapshot.polyrepo.semantic.1", "snapshot.polyrepo.semantic.2"],
+            )
+
     def test_record_validation_rejects_absolute_path(self):
         record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.path", "claims": {"path": "/Users/example/private.txt"}}
         self.assertTrue(validate_record(record))
