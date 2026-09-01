@@ -47,6 +47,8 @@ export type Dependency = {
   strength?: string;
   status?: string;
   observed_snapshot_id?: string;
+  observed_snapshot_ids?: string[];
+  present_in_latest?: boolean;
   evidence_refs?: string[];
   evidence?: string[] | Record<string, unknown>;
   source?: { project_id?: string; root_id?: string };
@@ -72,6 +74,7 @@ export type SourceOfTruth = {
 export type PortfolioProvenance = {
   snapshot_ids?: string[];
   snapshot_count?: number;
+  latest_snapshot_id?: string | null;
 }
 
 export type EvidenceRecord = {
@@ -125,7 +128,7 @@ export type ChangeRequest = {
   change_id: string;
   revision: number;
   status: string;
-  change_type: "feature" | "requirement" | "project_registration" | string;
+  change_type: "feature" | "fix" | "requirement" | "project_registration" | string;
   title: string;
   description: string;
   scope?: {

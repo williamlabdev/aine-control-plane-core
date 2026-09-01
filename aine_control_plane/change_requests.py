@@ -12,7 +12,7 @@ from .validation import find_local_paths
 
 
 CHANGE_REQUEST_SCHEMA = "aine.control-plane.change-request.v1"
-CHANGE_TYPES = ("feature", "requirement", "project_registration")
+CHANGE_TYPES = ("feature", "fix", "requirement", "project_registration")
 CHANGE_STATUSES = ("draft", "submitted", "approved", "rejected", "closed")
 CHANGE_RISKS = ("low", "medium", "high")
 

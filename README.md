@@ -47,6 +47,28 @@ contracts. The core has no source-repository mutation APIs and does not make
 network calls. File-backed adapters write to their configured destination, so
 callers must keep that destination outside scanned source repositories.
 
+## Install
+
+The package has no runtime dependencies and supports Python 3.9 or newer. It
+is not published to PyPI; install it from a tagged release:
+
+```bash
+pip install "aine-control-plane @ git+https://github.com/williamlabdev/aine-control-plane.git@v0.8.0"
+```
+
+For a checkout, install in editable mode so the tests and examples resolve
+the package without `PYTHONPATH`:
+
+```bash
+git clone https://github.com/williamlabdev/aine-control-plane.git
+cd aine-control-plane
+pip install -e .
+```
+
+The wire contracts are versioned independently of the package
+(`aine.control-plane.*.v1`); see the compatibility notes in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ## Quick start
 
 ```python
@@ -131,7 +153,10 @@ Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the public boundary and
 
 `PortfolioRegistry.relationships()` and `PortfolioRegistry.source_of_truth()`
 query only records persisted from a portable Registry snapshot. They do not
-rescan repositories or infer runtime semantics. Topology-only Registry edges
+rescan repositories or infer runtime semantics. Projections are "as of the
+latest snapshot": a record the latest snapshot no longer declares is retired
+(kept, but omitted) until you pass `include_retired=True` or
+`?include_retired=true`. Topology-only Registry edges
 with `kind` `portfolio`, `governance`, or `integration` remain queryable but do
 not expand `PortfolioRegistry.impact()` unless the manifest explicitly sets
 `impact: true`. Unresolved external providers remain on the edge evidence but

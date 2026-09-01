@@ -39,6 +39,12 @@ def _merge_observation(
 ) -> Mapping[str, Any]:
     merged = dict(incoming)
     merged["observed_snapshot_id"] = snapshot_id
+    observed: list[str] = []
+    if current:
+        observed.extend(str(item) for item in current.get("observed_snapshot_ids", []) if isinstance(item, str))
+    if snapshot_id not in observed:
+        observed.append(snapshot_id)
+    merged["observed_snapshot_ids"] = observed
     if current:
         evidence_refs = _evidence_strings(current.get("evidence_refs"))
         evidence_refs.update(_evidence_strings(current.get("evidence")))
@@ -211,23 +217,54 @@ class PortfolioRegistry:
     def snapshot_ids(self) -> list[str]:
         return [str(snapshot["snapshot_id"]) for snapshot in self.snapshots() if snapshot.get("snapshot_id")]
 
-    def projects(self) -> list[Mapping[str, Any]]:
+    def latest_snapshot_id(self) -> str | None:
+        """The most recently stored snapshot, by store order (created_at, then insertion)."""
+        snapshot_ids = self.snapshot_ids()
+        return snapshot_ids[-1] if snapshot_ids else None
+
+    def _finalize(
+        self,
+        records: Mapping[str, Mapping[str, Any]],
+        *,
+        include_retired: bool,
+    ) -> list[Mapping[str, Any]]:
+        """Annotate merged records with presence in the latest snapshot and apply the projection.
+
+        Records are never deleted: a record absent from the latest snapshot is
+        retired, not removed. ``include_retired=True`` returns every record ever
+        observed; ``False`` projects the portfolio as of the latest snapshot.
+        """
+        latest_id = self.latest_snapshot_id()
+        finalized: list[Mapping[str, Any]] = []
+        for key in sorted(records):
+            record = dict(records[key])
+            observed = record.get("observed_snapshot_ids", [])
+            record["present_in_latest"] = latest_id is not None and latest_id in observed
+            if include_retired or record["present_in_latest"]:
+                finalized.append(record)
+        return finalized
+
+    def projects(self, *, include_retired: bool = False) -> list[Mapping[str, Any]]:
         projects: dict[str, Mapping[str, Any]] = {}
         for snapshot in self.snapshots():
+            snapshot_id = str(snapshot.get("snapshot_id", "UNKNOWN"))
             for project in snapshot.get("projects", []):
                 if isinstance(project, Mapping) and project.get("project_id"):
-                    projects[str(project["project_id"])] = dict(project)
-        return [projects[key] for key in sorted(projects)]
+                    identity = str(project["project_id"])
+                    projects[identity] = _merge_observation(projects.get(identity), project, snapshot_id)
+        return self._finalize(projects, include_retired=include_retired)
 
-    def artifacts(self) -> list[Mapping[str, Any]]:
+    def artifacts(self, *, include_retired: bool = False) -> list[Mapping[str, Any]]:
         artifacts: dict[str, Mapping[str, Any]] = {}
         for snapshot in self.snapshots():
+            snapshot_id = str(snapshot.get("snapshot_id", "UNKNOWN"))
             for artifact in snapshot.get("artifacts", []):
                 if isinstance(artifact, Mapping) and artifact.get("artifact_id"):
-                    artifacts[str(artifact["artifact_id"])] = dict(artifact)
-        return [artifacts[key] for key in sorted(artifacts)]
+                    identity = str(artifact["artifact_id"])
+                    artifacts[identity] = _merge_observation(artifacts.get(identity), artifact, snapshot_id)
+        return self._finalize(artifacts, include_retired=include_retired)
 
-    def dependencies(self) -> list[Mapping[str, Any]]:
+    def dependencies(self, *, include_retired: bool = False) -> list[Mapping[str, Any]]:
         dependencies: dict[str, Mapping[str, Any]] = {}
         for snapshot in self.snapshots():
             snapshot_id = str(snapshot.get("snapshot_id", "UNKNOWN"))
@@ -239,15 +276,22 @@ class PortfolioRegistry:
                 if edge_id:
                     identity = str(edge_id)
                     dependencies[identity] = dict(_merge_observation(dependencies.get(identity), edge, snapshot_id))
-        return [dependencies[key] for key in sorted(dependencies)]
+        return self._finalize(dependencies, include_retired=include_retired)
 
     def relationships(
         self,
         project_id: str | None = None,
         relationship_type: str | None = None,
         status: str | None = None,
+        *,
+        include_retired: bool = False,
     ) -> list[Mapping[str, Any]]:
-        """Return declared relationship/dependency edges without rescanning repositories."""
+        """Return declared relationship/dependency edges without rescanning repositories.
+
+        Edges are merged across every stored snapshot so evidence accumulates,
+        then projected as of the latest snapshot: an edge the latest snapshot no
+        longer declares is retired and omitted unless ``include_retired`` is set.
+        """
         relationships: dict[str, Mapping[str, Any]] = {}
         for snapshot in self.snapshots():
             snapshot_id = str(snapshot.get("snapshot_id", "UNKNOWN"))
@@ -289,7 +333,7 @@ class PortfolioRegistry:
                 # other declared fields to move forward with the observation.
                 relationships[identity] = dict(_merge_observation(current, edge, snapshot_id))
         filtered: list[Mapping[str, Any]] = []
-        for edge in relationships.values():
+        for edge in self._finalize(relationships, include_retired=include_retired):
             source = edge.get("source", {})
             target = edge.get("target", {})
             source_id = source.get("project_id") if isinstance(source, Mapping) else None
@@ -332,7 +376,9 @@ class PortfolioRegistry:
         return sorted(filtered, key=lambda rule: str(rule.get("source_rule_id") or rule.get("domain") or ""))
 
     def get_project(self, project_id: str) -> Mapping[str, Any] | None:
-        for project in self.projects():
+        # Retired project ids must still resolve: impact reports and change
+        # requests may reference a project the latest snapshot no longer lists.
+        for project in self.projects(include_retired=True):
             if project.get("project_id") == project_id:
                 return project
         return None
@@ -358,6 +404,7 @@ class PortfolioRegistry:
             "project_id": project_id,
             "affected_projects": [affected[key] for key in sorted(affected)],
             "relationships": matching_edges,
+            "latest_snapshot_id": self.latest_snapshot_id(),
             "source_of_truth": self.source_of_truth(project_id=project_id),
             "read_only": True,
         }

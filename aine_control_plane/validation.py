@@ -88,13 +88,59 @@ def validate_record(record: Mapping[str, Any]) -> list[str]:
     return errors
 
 
+# Absolute-path prefixes that identify the producing machine. This list is the
+# contract: a value is rejected only when it starts with one of these (or is a
+# home-relative path, a file URI, a UNC path, or a drive-letter path). Adding a
+# prefix is a non-breaking change; removing one is not.
+_MACHINE_LOCAL_PREFIXES = (
+    "/users",
+    "/home",
+    "/root",
+    "/tmp",
+    "/var",
+    "/private",
+    "/opt",
+    "/etc",
+    "/usr",
+    "/mnt",
+    "/media",
+    "/proc",
+    "/sys",
+    "/dev",
+    "/volumes",
+    "/library",
+    "/applications",
+    "/system",
+    "/srv",
+    "/data",
+    "/app",
+    "/workspace",
+    "/scratch",
+)
+
+
+def _is_machine_local(candidate: str) -> bool:
+    lowered = candidate.lower()
+    # "//server/share" is the forward-slash spelling of a UNC path.
+    if lowered.startswith(("~", "file:", "//", "\\")) or re.match(r"^[A-Za-z]:", candidate):
+        return True
+    for prefix in _MACHINE_LOCAL_PREFIXES:
+        if lowered == prefix or lowered.startswith(prefix + "/") or lowered.startswith(prefix + "\\"):
+            return True
+    return False
+
+
 def find_local_paths(value: Any, path: str = "record") -> list[str]:
     """Find machine-local filesystem paths in portable data.
 
     Portable Registry records may legitimately contain root-relative references
-    such as ``./service/openapi.yaml`` or ``../aine-registry/README.md``.
-    Absolute paths and file URIs remain forbidden because they identify the
-    producing machine or require a local filesystem interpretation.
+    such as ``./service/openapi.yaml`` or ``../aine-registry/README.md``, and
+    root-relative service routes such as ``/api/v1/changes/{change_id}``.
+    Rejection is by enumeration: a string is reported only when it starts with
+    one of ``_MACHINE_LOCAL_PREFIXES`` (the filesystem roots of macOS, Linux
+    and common containers), a ``~`` home reference, a ``file:`` URI, a UNC
+    path, or a Windows drive letter. Any other leading ``/`` is treated as a
+    portable route, not a filesystem location.
     """
 
     if isinstance(value, Mapping):
@@ -108,12 +154,7 @@ def find_local_paths(value: Any, path: str = "record") -> list[str]:
             found.extend(find_local_paths(nested, f"{path}[{index}]"))
         return found
     if isinstance(value, str):
-        candidate = value.strip()
-        if (
-            candidate.lower().startswith(("/", "~", "file:"))
-            or candidate.startswith("\\")
-            or bool(re.match(r"^[A-Za-z]:", candidate))
-        ):
+        if _is_machine_local(value.strip()):
             return [path]
     return []
 

@@ -143,8 +143,8 @@ class ControlPlaneService:
     def ingest_snapshot(self, snapshot: Mapping[str, Any], context: AdapterContext) -> Mapping[str, Any]:
         return self.portfolio.ingest_snapshot(snapshot, context)
 
-    def projects(self) -> list[Mapping[str, Any]]:
-        return self.portfolio.projects()
+    def projects(self, *, include_retired: bool = False) -> list[Mapping[str, Any]]:
+        return self.portfolio.projects(include_retired=include_retired)
 
     def get_project(self, project_id: str) -> Mapping[str, Any] | None:
         return self.portfolio.get_project(project_id)
@@ -157,8 +157,10 @@ class ControlPlaneService:
         project_id: str | None = None,
         relationship_type: str | None = None,
         status: str | None = None,
+        *,
+        include_retired: bool = False,
     ) -> list[Mapping[str, Any]]:
-        return self.portfolio.relationships(project_id, relationship_type, status)
+        return self.portfolio.relationships(project_id, relationship_type, status, include_retired=include_retired)
 
     def source_of_truth(
         self,
@@ -169,7 +171,11 @@ class ControlPlaneService:
 
     def portfolio_provenance(self) -> Mapping[str, Any]:
         snapshot_ids = self.portfolio.snapshot_ids()
-        return {"snapshot_ids": snapshot_ids, "snapshot_count": len(snapshot_ids)}
+        return {
+            "snapshot_ids": snapshot_ids,
+            "snapshot_count": len(snapshot_ids),
+            "latest_snapshot_id": snapshot_ids[-1] if snapshot_ids else None,
+        }
 
     def list_change_requests(self) -> list[Mapping[str, Any]]:
         return self.change_requests.list()
