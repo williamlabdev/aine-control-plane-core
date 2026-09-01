@@ -12,6 +12,8 @@ from aine_control_plane.portfolio import PortfolioRegistry
 from aine_control_plane.retention import evaluate_store_retention
 from aine_control_plane.store import LocalRecordStore
 from aine_control_plane.validation import (
+    _MACHINE_LOCAL_PREFIXES,
+    find_local_paths,
     validate_authorization_decision,
     validate_policy_decision,
     validate_record,
@@ -233,6 +235,30 @@ class PublicCoreTests(unittest.TestCase):
 
         unc_record = {"schema": "aine.evidence.v1", "evidence_id": "evidence.unc", "claims": {"path": "\\\\server\\share\\private.txt"}}
         self.assertTrue(validate_record(unc_record))
+
+    def test_find_local_paths_allows_api_route_references(self):
+        record = {
+            "route": "/api/v1/changes/{change_id}",
+            "view": "/v1/relationships",
+            "contract": "./service/openapi.yaml",
+            "sibling": "../aine-registry/README.md",
+            "nested": {"paths": ["/healthz", "/v1/projects?include_retired=true"]},
+        }
+        self.assertEqual(find_local_paths(record), [])
+
+    def test_find_local_paths_rejects_every_machine_identifying_prefix(self):
+        # Iterate the constant itself so the deny list can never grow without coverage.
+        for prefix in _MACHINE_LOCAL_PREFIXES:
+            for variant in (prefix, prefix + "/x.yaml", prefix.upper() + "/x.yaml", prefix.title() + "\\x.yaml", "  " + prefix + "/x"):
+                with self.subTest(prefix=prefix, variant=variant):
+                    self.assertEqual(find_local_paths({"path": variant}), ["record.path"])
+        for non_prefix in ("~/x", "~other/x", "file:///tmp/x", "FILE:x", "\\\\server\\share", "C:x", "d:/x"):
+            with self.subTest(variant=non_prefix):
+                self.assertEqual(find_local_paths({"path": non_prefix}), ["record.path"])
+        # Prefix matching is on path segments: '/usr' is local, '/users-api' is a route.
+        for route in ("/usr-api/x", "/tmpfiles", "/homework/2026"):
+            with self.subTest(variant=route):
+                self.assertEqual(find_local_paths({"path": route}), [])
 
     def test_store_rejects_nonportable_records_and_event_payloads(self):
         with tempfile.TemporaryDirectory() as directory:

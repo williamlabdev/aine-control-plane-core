@@ -323,6 +323,17 @@ class V1CoreTests(unittest.TestCase):
             retained_cross_root = next(edge for edge in retained_edge if edge["dependency_id"] == "dep.polyrepo.cross-root")
             self.assertIn("content-tool/.aine/registry.json", retained_cross_root["evidence_refs"])
 
+            route_reference = json.loads(json.dumps(snapshot))
+            route_reference["snapshot_id"] = "snapshot.api-route"
+            route_reference["artifacts"][0]["route"] = "/api/v1/checkout"
+            self.assertEqual(portfolio.ingest_snapshot(route_reference, self.context)["status"], "success")
+            route_leak = json.loads(json.dumps(snapshot))
+            route_leak["snapshot_id"] = "snapshot.api-route-leak"
+            route_leak["artifacts"][0]["route"] = "/Users/w/checkout"
+            leaked_route = portfolio.ingest_snapshot(route_leak, self.context)
+            self.assertEqual(leaked_route["status"], "failure")
+            self.assertEqual(leaked_route["error_code"], "invalid_snapshot")
+
             for index, leaked_path in enumerate((r"\Users\private\api.yaml", r"C:Users\private\api.yaml", "~otheruser/api.yaml", "  /Users/private/api.yaml")):
                 bypass = json.loads(json.dumps(snapshot))
                 bypass["snapshot_id"] = f"snapshot.path-bypass-{index}"
