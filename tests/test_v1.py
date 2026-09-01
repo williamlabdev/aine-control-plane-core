@@ -514,7 +514,7 @@ class RetirementProjectionTests(unittest.TestCase):
     def test_projects_and_artifacts_carry_presence_and_observation_provenance(self):
         _, registry = self._registry(self.first, self.second)
         self.assertEqual(registry.latest_snapshot_id(), "snapshot.S2")
-        projects = {project["project_id"]: project for project in registry.projects()}
+        projects = {project["project_id"]: project for project in registry.projects(include_retired=True)}
         provider = projects["reference.provider"]
         self.assertEqual(provider["observed_snapshot_id"], "snapshot.S2")
         self.assertEqual(provider["observed_snapshot_ids"], ["snapshot.S1", "snapshot.S2"])
@@ -522,7 +522,9 @@ class RetirementProjectionTests(unittest.TestCase):
         consumer = projects["reference.consumer"]
         self.assertEqual(consumer["observed_snapshot_ids"], ["snapshot.S1"])
         self.assertFalse(consumer["present_in_latest"])
-        artifacts = registry.artifacts()
+        self.assertEqual([project["project_id"] for project in registry.projects()], ["reference.provider"])
+        self.assertEqual(registry.artifacts(), [])
+        artifacts = registry.artifacts(include_retired=True)
         self.assertTrue(artifacts)
         self.assertTrue(all(artifact["present_in_latest"] is False for artifact in artifacts))
         self.assertTrue(all(artifact["observed_snapshot_ids"] == ["snapshot.S1"] for artifact in artifacts))
@@ -558,3 +560,85 @@ class RetirementProjectionTests(unittest.TestCase):
         self.assertEqual(view["provenance"]["latest_snapshot_id"], "snapshot.S2")
         schema = json.loads((Path(__file__).parents[1] / "aine_control_plane" / "schema" / "relationships-view.v1.schema.json").read_text(encoding="utf-8"))
         self.assertEqual(set(view["provenance"]), set(schema["properties"]["provenance"]["properties"]))
+
+    def test_edges_absent_from_the_latest_snapshot_are_retired_by_default(self):
+        store, registry = self._registry(self.first, self.second)
+        self.assertEqual(registry.relationships(), [])
+        self.assertEqual(registry.dependencies(), [])
+        self.assertEqual(registry.relationships(project_id="reference.consumer"), [])
+        # Nothing was deleted: both snapshots are still stored, and the edge is still queryable.
+        self.assertEqual(registry.snapshot_ids(), ["snapshot.S1", "snapshot.S2"])
+        self.assertEqual(len(store.list_records("snapshot")), 2)
+
+    def test_retired_edges_remain_queryable_and_are_never_deleted(self):
+        _, registry = self._registry(self.first, self.second)
+        retired = registry.relationships(include_retired=True)
+        self.assertEqual([edge["dependency_id"] for edge in retired], ["dependency.reference.1"])
+        self.assertIs(retired[0]["present_in_latest"], False)
+        self.assertEqual(retired[0]["observed_snapshot_id"], "snapshot.S1")
+        self.assertEqual(retired[0]["observed_snapshot_ids"], ["snapshot.S1"])
+        # A re-declaration in a later snapshot un-retires the edge and keeps its history.
+        third = json.loads(json.dumps(self.first))
+        third["snapshot_id"] = "snapshot.S3"
+        self.assertEqual(registry.ingest_snapshot(third, self.context)["status"], "success")
+        current = registry.relationships()
+        self.assertEqual([edge["dependency_id"] for edge in current], ["dependency.reference.1"])
+        self.assertIs(current[0]["present_in_latest"], True)
+        self.assertEqual(current[0]["observed_snapshot_ids"], ["snapshot.S1", "snapshot.S3"])
+
+    def test_impact_excludes_retired_edges(self):
+        _, registry = self._registry(self.first, self.second)
+        report = registry.impact("reference.provider")
+        self.assertEqual(report["relationships"], [])
+        self.assertEqual(report["affected_projects"], [])
+        self.assertEqual(report["latest_snapshot_id"], "snapshot.S2")
+        # The retired consumer id still resolves for anything that references it.
+        self.assertEqual(registry.get_project("reference.consumer")["project_id"], "reference.consumer")
+        single_registry = self._registry(self.first)[1]
+        live = single_registry.impact("reference.provider")
+        self.assertEqual([edge["dependency_id"] for edge in live["relationships"]], ["dependency.reference.1"])
+        self.assertEqual(live["latest_snapshot_id"], "snapshot.S1")
+
+    def test_retirement_uses_insertion_order_when_snapshot_clocks_tie(self):
+        _, registry = self._registry(self.first, self.second, clock=lambda: "2026-01-03T00:00:00+00:00")
+        self.assertEqual(registry.latest_snapshot_id(), "snapshot.S2")
+        self.assertEqual(registry.relationships(), [])
+        _, reversed_registry = self._registry(self.second, self.first, clock=lambda: "2026-01-03T00:00:00+00:00")
+        self.assertEqual(reversed_registry.latest_snapshot_id(), "snapshot.S1")
+        self.assertEqual([edge["dependency_id"] for edge in reversed_registry.relationships()], ["dependency.reference.1"])
+
+    def test_http_views_expose_include_retired_as_an_explicit_opt_in(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        store = LocalRecordStore(Path(directory.name) / "control-plane.sqlite")
+        server = ControlPlaneHTTPServer(("127.0.0.1", 0), ControlPlaneService(store))
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        for snapshot in (self.first, self.second):
+            request = Request(
+                f"{base}/v1/snapshots",
+                data=json.dumps(snapshot).encode("utf-8"),
+                headers={"Content-Type": "application/json", "X-AINE-Actor": "agent.codex"},
+                method="POST",
+            )
+            with urlopen(request) as response:
+                self.assertEqual(json.loads(response.read())["status"], "success")
+        with urlopen(f"{base}/v1/relationships") as response:
+            self.assertEqual(json.loads(response.read())["relationships"], [])
+        with urlopen(f"{base}/v1/relationships?include_retired=true") as response:
+            view = json.loads(response.read())
+        self.assertEqual([edge["dependency_id"] for edge in view["relationships"]], ["dependency.reference.1"])
+        self.assertIs(view["relationships"][0]["present_in_latest"], False)
+        with urlopen(f"{base}/v1/projects") as response:
+            self.assertEqual([p["project_id"] for p in json.loads(response.read())["projects"]], ["reference.provider"])
+        with urlopen(f"{base}/v1/projects?include_retired=true") as response:
+            self.assertEqual(
+                [p["project_id"] for p in json.loads(response.read())["projects"]],
+                ["reference.consumer", "reference.provider"],
+            )
+        with urlopen(f"{base}/v1/projects/reference.provider/impact") as response:
+            report = json.loads(response.read())
+        self.assertEqual(report["relationships"], [])
+        self.assertEqual(report["latest_snapshot_id"], "snapshot.S2")

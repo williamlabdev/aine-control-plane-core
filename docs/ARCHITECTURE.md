@@ -95,9 +95,25 @@ need to tolerate unknown values when rendering.
 The v0.2.0 additions are backwards-compatible query capabilities: explicit
 relationship records are validated when present, `impact-report.v1` adds an
 optional `source_of_truth` array, and source-of-truth queries use the latest
-observed declaration for a stable `source_rule_id`. A missing declaration is
-not treated as a tombstone because snapshots are append-only observations;
-existing dependency records remain accepted under the prior ingest boundary.
+observed declaration for a stable `source_rule_id`. Existing dependency
+records remain accepted under the prior ingest boundary.
+
+v0.8.0 changes the default projection of projects, artifacts, dependencies
+and relationships. Snapshots stay append-only observations and no record is
+ever deleted, but a record that the latest stored snapshot no longer declares
+is *retired*: it is omitted from `projects()`, `relationships()`,
+`dependencies()`, `impact()` and the matching HTTP views unless the caller
+passes `include_retired=True` (HTTP: `?include_retired=true`). Every merged
+record carries `observed_snapshot_ids` (ordered) and `present_in_latest`
+(computed at query time, never stored), and `relationships-view.v1` /
+`impact-report.v1` declare `latest_snapshot_id` so an exclusion is auditable.
+"Latest" is store order (`created_at`, then insertion), the same rule that
+already decides `observed_snapshot_id`. Evidence still accumulates across all
+snapshots, so a retired edge keeps every `evidence_ref` it ever had.
+`source_of_truth()` is unchanged: a rule stays authoritative until a later
+declaration replaces it. Before v0.8.0 every record ever observed was
+returned; consumers that relied on that behaviour should pass
+`include_retired=True`.
 
 The `integration-observation.v1` contract is additive: consumers
 that do not use Orvena/airt observations remain unchanged. Its validator is

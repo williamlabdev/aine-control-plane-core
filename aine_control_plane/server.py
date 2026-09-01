@@ -21,6 +21,7 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+        include_retired = query.get("include_retired", ["false"])[0].strip().lower() in {"1", "true", "yes"}
         if path == "/healthz":
             self._respond(200, self.server.service.health())
             return
@@ -31,7 +32,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._respond(200, {"adapters": self.server.service.adapters(), "read_only": True})
             return
         if path == "/v1/projects":
-            self._respond(200, {"projects": self.server.service.projects(), "read_only": True})
+            self._respond(
+                200,
+                {"projects": self.server.service.projects(include_retired=include_retired), "read_only": True},
+            )
             return
         if path == "/v1/relationships":
             self._respond(
@@ -42,6 +46,7 @@ class _Handler(BaseHTTPRequestHandler):
                         query.get("project_id", [None])[0],
                         query.get("relationship_type", [None])[0],
                         query.get("status", [None])[0],
+                        include_retired=include_retired,
                     ),
                     "provenance": self.server.service.portfolio_provenance(),
                     "read_only": True,
