@@ -111,12 +111,18 @@ _MACHINE_LOCAL_PREFIXES = (
     "/library",
     "/applications",
     "/system",
+    "/srv",
+    "/data",
+    "/app",
+    "/workspace",
+    "/scratch",
 )
 
 
 def _is_machine_local(candidate: str) -> bool:
     lowered = candidate.lower()
-    if lowered.startswith(("~", "file:")) or candidate.startswith("\\") or re.match(r"^[A-Za-z]:", candidate):
+    # "//server/share" is the forward-slash spelling of a UNC path.
+    if lowered.startswith(("~", "file:", "//", "\\")) or re.match(r"^[A-Za-z]:", candidate):
         return True
     for prefix in _MACHINE_LOCAL_PREFIXES:
         if lowered == prefix or lowered.startswith(prefix + "/") or lowered.startswith(prefix + "\\"):

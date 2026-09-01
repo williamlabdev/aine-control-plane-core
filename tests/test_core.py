@@ -252,7 +252,7 @@ class PublicCoreTests(unittest.TestCase):
             for variant in (prefix, prefix + "/x.yaml", prefix.upper() + "/x.yaml", prefix.title() + "\\x.yaml", "  " + prefix + "/x"):
                 with self.subTest(prefix=prefix, variant=variant):
                     self.assertEqual(find_local_paths({"path": variant}), ["record.path"])
-        for non_prefix in ("~/x", "~other/x", "file:///tmp/x", "FILE:x", "\\\\server\\share", "C:x", "d:/x"):
+        for non_prefix in ("~/x", "~other/x", "file:///tmp/x", "FILE:x", "\\\\server\\share", "//server/share/x", "C:x", "d:/x"):
             with self.subTest(variant=non_prefix):
                 self.assertEqual(find_local_paths({"path": non_prefix}), ["record.path"])
         # Prefix matching is on path segments: '/usr' is local, '/users-api' is a route.
