@@ -27,7 +27,7 @@
     "change_id": {"type": "string", "minLength": 1},
     "revision": {"type": "integer", "minimum": 1},
     "status": {"enum": ["draft", "submitted", "approved", "rejected", "closed"]},
-    "change_type": {"enum": ["feature", "requirement", "project_registration"]},
+    "change_type": {"enum": ["feature", "fix", "requirement", "project_registration"]},
     "title": {"type": "string", "minLength": 1},
     "description": {"type": "string", "minLength": 1},
     "scope": {"type": "object"},

@@ -86,6 +86,12 @@ identifiers remain
 `aine.control-plane.*.v1`; consumers should pin and test the wire schemas
 independently from the Python package version.
 
+Enumerations grow additively: `change-request.v1` accepted `fix` as a
+`change_type` in v0.8.0 alongside `feature`, `requirement`, and
+`project_registration`. Adding a member never invalidates stored records,
+and no policy or approval routing branches on the member, so consumers only
+need to tolerate unknown values when rendering.
+
 The v0.2.0 additions are backwards-compatible query capabilities: explicit
 relationship records are validated when present, `impact-report.v1` adds an
 optional `source_of_truth` array, and source-of-truth queries use the latest

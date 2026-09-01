@@ -140,6 +140,35 @@ class ChangeRequestWorkflowTests(unittest.TestCase):
             self.assertEqual(submitted["status"], "success")
             self.assertNotIn("approval", submitted["result"])
 
+    def test_fix_change_type_creates_a_draft_and_routes_like_any_other_type(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalRecordStore(Path(directory) / "control-plane.sqlite")
+            service = ControlPlaneService(store)
+            created = service.create_change_request(
+                {
+                    "change_id": "change.fix.1",
+                    "change_type": "fix",
+                    "title": "Stop rejecting root-relative API routes as local paths",
+                    "description": "A dogfood snapshot was refused for an /api/v1 route reference.",
+                    "scope": {"project_ids": ["aine-control-plane"]},
+                    "acceptance_criteria": ["The snapshot ingests without an invalid_snapshot error."],
+                    "source_of_truth": [],
+                    "evidence_ids": [],
+                    "risk": "low",
+                    "approval_required": True,
+                },
+                self.context,
+            )
+            self.assertEqual(created["status"], "success")
+            self.assertEqual(created["result"]["change_request"]["change_type"], "fix")
+
+            submitted = service.submit_change_request("change.fix.1", self.context)
+            self.assertEqual(submitted["status"], "success")
+            approval = submitted["result"]["approval"]
+            self.assertEqual(approval["status"], "pending")
+            self.assertEqual(approval["subject"], {"change_id": "change.fix.1", "change_type": "fix"})
+            self.assertEqual(approval["required_roles"], ["approver"])
+
     def test_change_request_schema_declares_read_only_proposal_boundary(self):
         schema_path = Path(__file__).parents[1] / "aine_control_plane" / "schema" / "change-request.v1.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -147,7 +176,7 @@ class ChangeRequestWorkflowTests(unittest.TestCase):
         self.assertEqual(schema["properties"]["read_only"]["const"], True)
         self.assertEqual(
             set(schema["properties"]["change_type"]["enum"]),
-            {"feature", "requirement", "project_registration"},
+            {"feature", "fix", "requirement", "project_registration"},
         )
 
     def test_http_routes_require_actor_and_expose_lifecycle(self):

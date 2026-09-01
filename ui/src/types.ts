@@ -125,7 +125,7 @@ export type ChangeRequest = {
   change_id: string;
   revision: number;
   status: string;
-  change_type: "feature" | "requirement" | "project_registration" | string;
+  change_type: "feature" | "fix" | "requirement" | "project_registration" | string;
   title: string;
   description: string;
   scope?: {
