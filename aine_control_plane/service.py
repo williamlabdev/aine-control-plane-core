@@ -169,7 +169,11 @@ class ControlPlaneService:
 
     def portfolio_provenance(self) -> Mapping[str, Any]:
         snapshot_ids = self.portfolio.snapshot_ids()
-        return {"snapshot_ids": snapshot_ids, "snapshot_count": len(snapshot_ids)}
+        return {
+            "snapshot_ids": snapshot_ids,
+            "snapshot_count": len(snapshot_ids),
+            "latest_snapshot_id": snapshot_ids[-1] if snapshot_ids else None,
+        }
 
     def list_change_requests(self) -> list[Mapping[str, Any]]:
         return self.change_requests.list()

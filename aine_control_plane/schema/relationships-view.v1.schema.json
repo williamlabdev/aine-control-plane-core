@@ -12,6 +12,8 @@
         "type": "object",
         "required": ["source", "target", "observed_snapshot_id"],
         "properties": {
+          "observed_snapshot_ids": {"type": "array", "items": {"type": "string"}},
+          "present_in_latest": {"type": "boolean"},
           "dependency_id": {"type": "string"},
           "relationship_id": {"type": "string"},
           "kind": {"type": "string"},
@@ -31,10 +33,11 @@
     },
     "provenance": {
       "type": "object",
-      "required": ["snapshot_ids", "snapshot_count"],
+      "required": ["snapshot_ids", "snapshot_count", "latest_snapshot_id"],
       "properties": {
         "snapshot_ids": {"type": "array", "items": {"type": "string"}},
-        "snapshot_count": {"type": "integer", "minimum": 0}
+        "snapshot_count": {"type": "integer", "minimum": 0},
+        "latest_snapshot_id": {"type": ["string", "null"]}
       },
       "additionalProperties": false
     },

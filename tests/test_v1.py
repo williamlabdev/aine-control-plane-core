@@ -483,3 +483,78 @@ class CorsOptInTest(unittest.TestCase):
             self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:4173")
             self.assertEqual(response.headers.get("Access-Control-Allow-Methods"), "GET, POST, OPTIONS")
             self.assertEqual(response.headers.get("Access-Control-Allow-Headers"), "Content-Type, X-AINE-Actor")
+
+
+class RetirementProjectionTests(unittest.TestCase):
+    """Records absent from the latest snapshot are retired, never deleted."""
+
+    def setUp(self):
+        self.context = AdapterContext(
+            "retirement-v1",
+            actor={"id": "agent.codex", "roles": ["approver"], "teams": ["platform"]},
+        )
+        self.first = json.loads((FIXTURE_DIR / "registry_snapshot.json").read_text(encoding="utf-8"))
+        self.first["snapshot_id"] = "snapshot.S1"
+        self.second = json.loads(json.dumps(self.first))
+        self.second["snapshot_id"] = "snapshot.S2"
+        self.second["dependencies"] = []
+        self.second["artifacts"] = []
+        self.second["projects"] = [project for project in self.second["projects"] if project["project_id"] == "reference.provider"]
+
+    def _registry(self, *snapshots, clock=None):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        kwargs = {"clock": clock} if clock else {}
+        store = LocalRecordStore(Path(directory.name) / "control-plane.sqlite", **kwargs)
+        registry = PortfolioRegistry(store)
+        for snapshot in snapshots:
+            self.assertEqual(registry.ingest_snapshot(snapshot, self.context)["status"], "success")
+        return store, registry
+
+    def test_projects_and_artifacts_carry_presence_and_observation_provenance(self):
+        _, registry = self._registry(self.first, self.second)
+        self.assertEqual(registry.latest_snapshot_id(), "snapshot.S2")
+        projects = {project["project_id"]: project for project in registry.projects()}
+        provider = projects["reference.provider"]
+        self.assertEqual(provider["observed_snapshot_id"], "snapshot.S2")
+        self.assertEqual(provider["observed_snapshot_ids"], ["snapshot.S1", "snapshot.S2"])
+        self.assertTrue(provider["present_in_latest"])
+        consumer = projects["reference.consumer"]
+        self.assertEqual(consumer["observed_snapshot_ids"], ["snapshot.S1"])
+        self.assertFalse(consumer["present_in_latest"])
+        artifacts = registry.artifacts()
+        self.assertTrue(artifacts)
+        self.assertTrue(all(artifact["present_in_latest"] is False for artifact in artifacts))
+        self.assertTrue(all(artifact["observed_snapshot_ids"] == ["snapshot.S1"] for artifact in artifacts))
+
+    def test_provenance_is_absent_when_nothing_was_ingested(self):
+        _, registry = self._registry()
+        self.assertIsNone(registry.latest_snapshot_id())
+        self.assertEqual(registry.projects(), [])
+        self.assertEqual(ControlPlaneService(registry.store).portfolio_provenance()["latest_snapshot_id"], None)
+
+    def test_relationships_view_provenance_declares_latest_snapshot(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        store = LocalRecordStore(Path(directory.name) / "control-plane.sqlite")
+        server = ControlPlaneHTTPServer(("127.0.0.1", 0), ControlPlaneService(store))
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        base = f"http://127.0.0.1:{server.server_address[1]}"
+        for snapshot in (self.first, self.second):
+            request = Request(
+                f"{base}/v1/snapshots",
+                data=json.dumps(snapshot).encode("utf-8"),
+                headers={"Content-Type": "application/json", "X-AINE-Actor": "agent.codex"},
+                method="POST",
+            )
+            with urlopen(request) as response:
+                self.assertEqual(json.loads(response.read())["status"], "success")
+        with urlopen(f"{base}/v1/relationships") as response:
+            view = json.loads(response.read())
+        self.assertEqual(view["provenance"]["snapshot_ids"], ["snapshot.S1", "snapshot.S2"])
+        self.assertEqual(view["provenance"]["snapshot_count"], 2)
+        self.assertEqual(view["provenance"]["latest_snapshot_id"], "snapshot.S2")
+        schema = json.loads((Path(__file__).parents[1] / "aine_control_plane" / "schema" / "relationships-view.v1.schema.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(view["provenance"]), set(schema["properties"]["provenance"]["properties"]))
